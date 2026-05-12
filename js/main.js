@@ -2,6 +2,12 @@
  * main.js - Game initialization, asset preloading, game loop, state machine
  */
 
+// ===================== CONSTANTS =====================
+const ARENA_WIDTH = 3200;
+const SCREEN_WIDTH = 1280;
+const SCREEN_HEIGHT = 720;
+const MAX_HP = 300;
+
 // ===================== GLOBALS =====================
 const Game = {
     state: 'loading', // loading → select → dialogue → battle → gameover
@@ -15,8 +21,10 @@ const Game = {
     keys: {},
     attackPressed: false,
     jumpPressed: false,
+    skillPressed: false,
     debugMode: true,
-    lastTime: 0
+    lastTime: 0,
+    camera: { x: 0, targetX: 0 }
 };
 
 // Asset storage
@@ -28,11 +36,23 @@ const Assets = {
     sprites: {
         reimu: { left: {}, right: {} },
         marisa: { left: {}, right: {} }
-    }
+    },
+    effects: {
+        spellcard: [],
+        spellcardHit: null,
+        laserBeam: null,
+        laserHead: null,
+        laserCharge: null
+    },
+    platform: null,
+    platformSmall: null,
+    pickupCd: null,
+    pickupHp: null,
+    defeated: { reimu: null, marisa: null }
 };
 
 // ===================== ASSET LOADING =====================
-const SPRITE_DISPLAY_H = 250;
+const SPRITE_DISPLAY_H = 170;
 
 /**
  * Load a single image
@@ -137,6 +157,68 @@ async function preloadAssets() {
         Assets.sprites[char].left.attack = attackFrames;
         Assets.sprites[char].right.attack = attackFrames.map(f => flipImage(f));
     }
+
+    // ---- Effect Assets ----
+    // Spell card frames 1-4
+    for (let i = 1; i <= 4; i++) {
+        const img = await loadImage(`assets/spellcard_${i}.png`);
+        if (img) {
+            Assets.effects.spellcard.push(img);
+        }
+    }
+
+    // Spell card hit effect
+    const spellHitImg = await loadImage('assets/spellcard_hit.png');
+    if (spellHitImg) {
+        Assets.effects.spellcardHit = spellHitImg;
+    }
+
+    // Laser assets
+    const laserBeamImg = await loadImage('assets/laser_beam.png');
+    if (laserBeamImg) {
+        Assets.effects.laserBeam = laserBeamImg;
+    }
+
+    const laserHeadImg = await loadImage('assets/laser_head.png');
+    if (laserHeadImg) {
+        Assets.effects.laserHead = laserHeadImg;
+    }
+
+    const laserChargeImg = await loadImage('assets/laser_charge.png');
+    if (laserChargeImg) {
+        Assets.effects.laserCharge = laserChargeImg;
+    }
+
+    // Platform assets
+    const platformImg = await loadImage('assets/platform.png');
+    if (platformImg) {
+        Assets.platform = platformImg;
+    }
+
+    const platformSmallImg = await loadImage('assets/platform_small.png');
+    if (platformSmallImg) {
+        Assets.platformSmall = platformSmallImg;
+    }
+
+    // Pickup assets
+    const pickupCdImg = await loadImage('assets/pickup_cd.png');
+    if (pickupCdImg) {
+        Assets.pickupCd = pickupCdImg;
+    }
+
+    const pickupHpImg = await loadImage('assets/pickup_hp.png');
+    if (pickupHpImg) {
+        Assets.pickupHp = pickupHpImg;
+    }
+
+    // Defeated sprites
+    for (const char of ['reimu', 'marisa']) {
+        const defImg = await loadImage(`assets/${char}_defeated.png`);
+        if (defImg) {
+            const scale = 170 / Math.max(defImg.height, 1);
+            Assets.defeated[char] = scaleImage(defImg, Math.round(defImg.height * scale));
+        }
+    }
 }
 
 // ===================== LOADING SCREEN =====================
@@ -174,7 +256,7 @@ function drawLoadingScreen(ctx, progress) {
 
 // ===================== INPUT =====================
 const keyState = {
-    a: false, d: false, w: false, space: false, j: false
+    a: false, d: false, w: false, space: false, j: false, k: false
 };
 
 function setupInput() {
@@ -187,10 +269,12 @@ function setupInput() {
         if (key === 'w') keyState.w = true;
         if (key === ' ') { keyState.space = true; e.preventDefault(); }
         if (key === 'j') keyState.j = true;
+        if (key === 'k') keyState.k = true;
 
         // One-shot presses
         if (key === 'j') Game.attackPressed = true;
         if (key === 'w' || key === ' ') Game.jumpPressed = true;
+        if (key === 'k') Game.skillPressed = true;
 
         // Scene-specific
         if (Game.state === 'select') {
@@ -215,6 +299,7 @@ function setupInput() {
         if (key === 'w') keyState.w = false;
         if (key === ' ') keyState.space = false;
         if (key === 'j') keyState.j = false;
+        if (key === 'k') keyState.k = false;
     });
 
     // Mouse clicks for select screen
@@ -233,6 +318,7 @@ function resetGame() {
     Game.player = null;
     Game.enemy = null;
     Game.winner = null;
+    Game.camera = { x: 0, targetX: 0 };
     Game.state = 'select';
     SelectScene.reset();
 }
@@ -275,6 +361,7 @@ function gameLoop(timestamp) {
     // Reset one-shot inputs
     Game.attackPressed = false;
     Game.jumpPressed = false;
+    Game.skillPressed = false;
 
     requestAnimationFrame(gameLoop);
 }
@@ -283,8 +370,8 @@ function gameLoop(timestamp) {
 async function init() {
     Game.canvas = document.getElementById('gameCanvas');
     Game.ctx = Game.canvas.getContext('2d');
-    Game.canvas.width = 1280;
-    Game.canvas.height = 720;
+    Game.canvas.width = SCREEN_WIDTH;
+    Game.canvas.height = SCREEN_HEIGHT;
 
     setupInput();
 

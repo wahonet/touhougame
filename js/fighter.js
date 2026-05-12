@@ -1,6 +1,15 @@
 /**
- * Fighter - Character entity with physics, AI, hit detection, and rendering
+ * Fighter - Character entity with physics, AI, hit detection, skills, and rendering
  */
+
+/**
+ * Check if two rectangles overlap
+ */
+function rectsOverlap(r1, r2) {
+    return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x &&
+           r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+}
+
 class Fighter {
     /**
      * @param {string} name - "reimu" or "marisa"
@@ -16,24 +25,30 @@ class Fighter {
         this.cy = groundY;
         this.facing = facing;
         this.isAI = isAI;
-        this.hp = 100;
+        this.hp = MAX_HP;
         this.state = 'idle'; // idle, walk, attack, dead
         this.velocityY = 0;
         this.isOnGround = true;
         this._atkHit = false;
         this.hitFlash = 0;
+        this.prevCy = groundY;
 
-        // Sprites are pre-scaled to SPRITE_DISPLAY_H (250px)
-        // We use actual frame dimensions for drawing (preserves aspect ratio)
+        // Platform tracking
+        this._currentPlatform = null;
 
         // Hurtbox / hitbox dimensions
-        this.hurtboxW = 120;
-        this.hurtboxH = 200;
-        this.hitboxW = 200;
-        this.hitboxH = 160;
+        this.hurtboxW = 70;
+        this.hurtboxH = 140;
+        this.hitboxW = 140;
+        this.hitboxH = 100;
 
         // Movement
         this.moveSpeed = 5;
+
+        // Skill system
+        this.skillCooldown = 0;
+        this.skillActive = false;
+        this.skillData = null;
 
         // Animations
         this.anims = {};
@@ -46,6 +61,7 @@ class Fighter {
             this.aiAction = 'idle';
             this.aiActionTimer = 0;
             this.aiCooldown = 0;
+            this.aiActionTarget = null;
         }
     }
 
@@ -120,31 +136,79 @@ class Fighter {
     /**
      * Main update loop
      * @param {number} dt - Delta time in seconds
-     * @param {Object} keys - Currently held keys {a, d, w, space, j}
+     * @param {Object} keys - Currently held keys {a, d, w, space, j, k}
      * @param {boolean} attackPressed - J key just pressed this frame
      * @param {boolean} jumpPressed - W/Space just pressed this frame
+     * @param {boolean} skillPressed - K key just pressed this frame
      * @param {Fighter} opponent - The other fighter (for AI targeting)
+     * @param {Array} platforms - Platform objects for physics
+     * @param {Array} pickups - Pickup objects for AI targeting
      */
-    update(dt, keys, attackPressed, jumpPressed, opponent) {
+    update(dt, keys, attackPressed, jumpPressed, skillPressed, opponent, platforms, pickups) {
         if (this.state === 'dead') {
             this.currentAnim.update(dt);
+            // Still tick down skill cooldown
+            if (this.skillCooldown > 0) {
+                this.skillCooldown -= dt;
+                if (this.skillCooldown < 0) this.skillCooldown = 0;
+            }
             return;
         }
 
+        // Skill activation (any non-dead state)
+        if (skillPressed && this.skillCooldown <= 0 && !this.skillActive) {
+            this.activateSkill();
+        }
+
+        // Update skill effects
+        this.updateSkill(dt, opponent);
+
+        // AI or player input
         if (this.isAI) {
-            this._updateAI(dt, opponent);
+            this._updateAI(dt, opponent, platforms, pickups);
         } else {
             this._updatePlayer(dt, keys, attackPressed, jumpPressed);
         }
 
-        // Physics - gravity
+        // Check if walked off platform
+        if (this.isOnGround && this._currentPlatform) {
+            const plat = this._currentPlatform;
+            if (this.cx <= plat.x || this.cx >= plat.x + plat.w) {
+                this.isOnGround = false;
+                this._currentPlatform = null;
+            }
+        }
+
+        // Physics - gravity (with platform support)
+        this.prevCy = this.cy;
         if (!this.isOnGround) {
-            this.velocityY += 0.7;
+            this.velocityY += 0.55;
             this.cy += this.velocityY;
-            if (this.cy >= this.groundY) {
+
+            // Check platform landing (only when falling)
+            if (this.velocityY > 0 && platforms) {
+                // Sort platforms by y ascending (highest first = smallest y)
+                const sortedPlatforms = [...platforms].sort((a, b) => a.y - b.y);
+                for (const plat of sortedPlatforms) {
+                    if (this.prevCy <= plat.y && this.cy >= plat.y) {
+                        // Check horizontal overlap
+                        if (this.cx > plat.x - 10 && this.cx < plat.x + plat.w + 10) {
+                            this.cy = plat.y;
+                            this.velocityY = 0;
+                            this.isOnGround = true;
+                            this._currentPlatform = plat;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Check ground
+            if (!this.isOnGround && this.cy >= this.groundY) {
                 this.cy = this.groundY;
                 this.velocityY = 0;
                 this.isOnGround = true;
+                this._currentPlatform = null;
             }
         }
 
@@ -155,10 +219,10 @@ class Fighter {
             this._syncAnim();
         }
 
-        // Clamp position
+        // Clamp position to arena bounds
         const halfW = this.hurtboxW / 2;
         if (this.cx < halfW) this.cx = halfW;
-        if (this.cx > 1280 - halfW) this.cx = 1280 - halfW;
+        if (this.cx > ARENA_WIDTH - halfW) this.cx = ARENA_WIDTH - halfW;
 
         // Hit flash decay
         if (this.hitFlash > 0) {
@@ -199,8 +263,9 @@ class Fighter {
 
         // Jump
         if (jumpPressed && this.isOnGround) {
-            this.velocityY = -14;
+            this.velocityY = -18;
             this.isOnGround = false;
+            this._currentPlatform = null;
         }
 
         // Attack
@@ -211,8 +276,8 @@ class Fighter {
         }
     }
 
-    /** Simple AI logic */
-    _updateAI(dt, opponent) {
+    /** Simple AI logic with skill usage and pickup seeking */
+    _updateAI(dt, opponent, platforms, pickups) {
         if (this.state === 'attack') return;
 
         // Face toward opponent
@@ -220,6 +285,20 @@ class Fighter {
             this.setFacing('right');
         } else {
             this.setFacing('left');
+        }
+
+        // Skill usage
+        if (this.skillCooldown <= 0 && !this.skillActive && Math.random() < 0.3) {
+            let useSkill = true;
+            if (this.name === 'marisa') {
+                // Roughly aligned horizontally with opponent
+                const dy = Math.abs(this.cy - opponent.cy);
+                if (dy > 150) useSkill = false;
+            }
+            if (useSkill) {
+                this.activateSkill();
+                return;
+            }
         }
 
         // Cooldown
@@ -235,7 +314,23 @@ class Fighter {
             const dist = Math.abs(this.cx - opponent.cx);
             const r = Math.random();
 
-            if (dist < 250 && r < 0.4) {
+            // Pickup seeking (10% chance)
+            if (pickups && pickups.length > 0 && r < 0.10) {
+                let nearest = null;
+                let nearestDist = Infinity;
+                for (const pickup of pickups) {
+                    const d = Math.abs(this.cx - (pickup.x + pickup.width / 2));
+                    if (d < nearestDist) {
+                        nearestDist = d;
+                        nearest = pickup;
+                    }
+                }
+                if (nearest && nearestDist < 800) {
+                    this.aiAction = 'seekPickup';
+                    this.aiActionTarget = nearest;
+                    this.aiActionTimer = 30;
+                }
+            } else if (dist < 250 && r < 0.4) {
                 // Attack if close
                 this.aiAction = 'attack';
                 this.aiActionTimer = 1;
@@ -274,11 +369,24 @@ class Fighter {
             }
             case 'jump': {
                 if (this.isOnGround) {
-                    this.velocityY = -14;
+                    this.velocityY = -18;
                     this.isOnGround = false;
+                    this._currentPlatform = null;
                 }
                 this.aiTimer = 0;
                 this.aiActionTimer = 0;
+                break;
+            }
+            case 'seekPickup': {
+                if (this.aiActionTarget) {
+                    const targetX = this.aiActionTarget.x + this.aiActionTarget.width / 2;
+                    const dir = targetX > this.cx ? 1 : -1;
+                    this.cx += dir * this.moveSpeed;
+                    if (this.state !== 'walk') {
+                        this.state = 'walk';
+                        this._syncAnim();
+                    }
+                }
                 break;
             }
             case 'idle':
@@ -292,11 +400,325 @@ class Fighter {
         }
     }
 
+    // ===================== SKILL SYSTEM =====================
+
+    /** Activate the fighter's unique skill */
+    activateSkill() {
+        this.skillActive = true;
+        this.skillCooldown = 15;
+        this.skillData = {};
+
+        if (this.name === 'reimu') {
+            this._activateSpellCards();
+        } else if (this.name === 'marisa') {
+            this._activateLaser();
+        }
+    }
+
+    /** Reimu: Spell Cards - 8 projectiles in a fan */
+    _activateSpellCards() {
+        this.skillData = {
+            projectiles: [],
+            hitEffects: [],
+            age: 0
+        };
+
+        const dir = this.facing === 'right' ? 1 : -1;
+        for (let i = 0; i < 8; i++) {
+            const angle = (-30 + (60 / 7) * i) * Math.PI / 180;
+            this.skillData.projectiles.push({
+                x: this.cx + dir * 30,
+                y: this.cy - this.hurtboxH / 2,
+                vx: Math.cos(angle) * 10 * dir,
+                vy: Math.sin(angle) * 10,
+                active: true,
+                frame: 0,
+                hitTarget: false
+            });
+        }
+    }
+
+    /** Marisa: Laser Beam - Master Spark */
+    _activateLaser() {
+        this.skillData = {
+            phase: 'charge',
+            chargeTimer: 0,
+            fireTimer: 0,
+            damageTicks: [false, false, false],
+            beamDir: this.facing === 'right' ? 1 : -1
+        };
+    }
+
+    /** Get the beam rectangle for Marisa's laser */
+    getBeamRect() {
+        if (!this.skillData || this.skillData.phase !== 'fire') return null;
+        const dir = this.skillData.beamDir;
+        const beamHeight = 40;
+        const beamY = this.cy - this.hurtboxH / 2 - beamHeight / 2;
+        let beamStartX, beamEndX;
+        if (dir === 1) {
+            beamStartX = this.cx + this.hurtboxW / 2;
+            beamEndX = Math.min(beamStartX + 800, ARENA_WIDTH);
+        } else {
+            beamEndX = this.cx - this.hurtboxW / 2;
+            beamStartX = Math.max(beamEndX - 800, 0);
+        }
+        return { x: beamStartX, y: beamY, w: beamEndX - beamStartX, h: beamHeight };
+    }
+
+    /** Update skill effects each frame */
+    updateSkill(dt, opponent) {
+        // Cooldown tick
+        if (this.skillCooldown > 0) {
+            this.skillCooldown -= dt;
+            if (this.skillCooldown < 0) this.skillCooldown = 0;
+        }
+
+        if (!this.skillActive || !this.skillData) return;
+
+        if (this.name === 'reimu') {
+            this._updateSpellCards(dt, opponent);
+        } else if (this.name === 'marisa') {
+            this._updateLaser(dt, opponent);
+        }
+    }
+
+    /** Update Reimu spell card projectiles */
+    _updateSpellCards(dt, opponent) {
+        const data = this.skillData;
+        data.age++;
+
+        for (const proj of data.projectiles) {
+            if (!proj.active) continue;
+
+            proj.x += proj.vx;
+            proj.y += proj.vy;
+            proj.frame++;
+
+            // Check hit on opponent
+            if (!proj.hitTarget && opponent.state !== 'dead') {
+                const hurtbox = opponent.getHurtbox();
+                // Point-in-rect check for projectile center
+                if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
+                    proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
+                    proj.hitTarget = true;
+                    opponent.damage(15);
+                    data.hitEffects.push({
+                        x: proj.x, y: proj.y, timer: 10
+                    });
+                    proj.active = false;
+                }
+            }
+
+            // Out of bounds
+            if (proj.x < -50 || proj.x > ARENA_WIDTH + 50 ||
+                proj.y < -50 || proj.y > SCREEN_HEIGHT + 50) {
+                proj.active = false;
+            }
+
+            // Lifetime
+            if (proj.frame > 120) {
+                proj.active = false;
+            }
+        }
+
+        // Update hit effects
+        for (let i = data.hitEffects.length - 1; i >= 0; i--) {
+            data.hitEffects[i].timer--;
+            if (data.hitEffects[i].timer <= 0) {
+                data.hitEffects.splice(i, 1);
+            }
+        }
+
+        // All done?
+        if (data.projectiles.every(p => !p.active) && data.hitEffects.length === 0) {
+            this.skillActive = false;
+            this.skillData = null;
+        }
+    }
+
+    /** Update Marisa laser beam */
+    _updateLaser(dt, opponent) {
+        const data = this.skillData;
+
+        if (data.phase === 'charge') {
+            data.chargeTimer += dt;
+            if (data.chargeTimer >= 0.5) {
+                data.phase = 'fire';
+                data.fireTimer = 0;
+                data.beamDir = this.facing === 'right' ? 1 : -1;
+            }
+        } else if (data.phase === 'fire') {
+            data.fireTimer += dt;
+
+            // Damage ticks at 0s, 0.33s, 0.66s
+            const tickTimes = [0, 0.33, 0.66];
+            for (let i = 0; i < 3; i++) {
+                if (!data.damageTicks[i] && data.fireTimer >= tickTimes[i]) {
+                    data.damageTicks[i] = true;
+                    const beamRect = this.getBeamRect();
+                    if (beamRect && opponent.state !== 'dead') {
+                        const hurtbox = opponent.getHurtbox();
+                        if (rectsOverlap(beamRect, hurtbox)) {
+                            opponent.damage(10);
+                        }
+                    }
+                }
+            }
+
+            if (data.fireTimer >= 1.0) {
+                data.phase = 'done';
+                this.skillActive = false;
+                this.skillData = null;
+            }
+        }
+    }
+
+    /** Draw skill effects at world coordinates */
+    drawSkill(ctx) {
+        if (!this.skillActive || !this.skillData) return;
+
+        if (this.name === 'reimu') {
+            this._drawSpellCards(ctx);
+        } else if (this.name === 'marisa') {
+            this._drawLaser(ctx);
+        }
+    }
+
+    /** Draw Reimu spell card projectiles and hit effects */
+    _drawSpellCards(ctx) {
+        const data = this.skillData;
+
+        // Draw projectiles
+        for (const proj of data.projectiles) {
+            if (!proj.active) continue;
+            const frameIndex = Math.floor(proj.frame / 8) % 4;
+            const sprite = Assets.effects.spellcard[frameIndex];
+            if (sprite) {
+                ctx.drawImage(sprite, proj.x - 16, proj.y - 16, 32, 32);
+            } else {
+                // Fallback: draw a colored circle
+                ctx.save();
+                ctx.fillStyle = '#ff6b8a';
+                ctx.shadowColor = '#ff6b8a';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Draw hit effects
+        for (const effect of data.hitEffects) {
+            const sprite = Assets.effects.spellcardHit;
+            if (sprite) {
+                ctx.drawImage(sprite, effect.x - 24, effect.y - 24, 48, 48);
+            } else {
+                // Fallback: draw explosion circle
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 100, 50, 0.7)';
+                ctx.shadowColor = '#ff6633';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+    }
+
+    /** Draw Marisa laser beam */
+    _drawLaser(ctx) {
+        const data = this.skillData;
+
+        if (data.phase === 'charge') {
+            const chargeScale = 1 + data.chargeTimer * 3;
+            const sprite = Assets.effects.laserCharge;
+            const dir = data.beamDir;
+            const cx = this.cx + dir * (this.hurtboxW / 2 + 10);
+            const cy = this.cy - this.hurtboxH / 2;
+
+            if (sprite) {
+                const drawW = 48 * chargeScale;
+                const drawH = 48 * chargeScale;
+                ctx.drawImage(sprite, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+            } else {
+                // Fallback: draw growing energy circle
+                ctx.save();
+                const radius = 20 * chargeScale;
+                ctx.fillStyle = `rgba(255, 255, 0, ${0.5 + data.chargeTimer})`;
+                ctx.shadowColor = '#ffcc00';
+                ctx.shadowBlur = 30;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        } else if (data.phase === 'fire') {
+            const beamRect = this.getBeamRect();
+            if (!beamRect) return;
+
+            const dir = data.beamDir;
+
+            // Draw beam body by tiling laser_beam.png
+            const beamSprite = Assets.effects.laserBeam;
+            if (beamSprite) {
+                const tileW = beamSprite.width || 96;
+                for (let bx = beamRect.x; bx < beamRect.x + beamRect.w; bx += tileW) {
+                    const drawW = Math.min(tileW, beamRect.x + beamRect.w - bx);
+                    if (drawW > 0) {
+                        ctx.drawImage(beamSprite, bx, beamRect.y, drawW, beamRect.h);
+                    }
+                }
+            } else {
+                // Fallback: draw solid beam
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 100, 0.8)';
+                ctx.shadowColor = '#ffcc00';
+                ctx.shadowBlur = 20;
+                ctx.fillRect(beamRect.x, beamRect.y, beamRect.w, beamRect.h);
+                ctx.restore();
+            }
+
+            // Draw beam head at tip
+            const headSprite = Assets.effects.laserHead;
+            if (headSprite) {
+                const headX = dir === 1 ? beamRect.x + beamRect.w - 64 : beamRect.x;
+                ctx.drawImage(headSprite, headX, beamRect.y - 4, 64, 48);
+            }
+
+            // Beam glow overlay
+            ctx.save();
+            ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.02) * 0.1;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(beamRect.x, beamRect.y + 10, beamRect.w, beamRect.h - 20);
+            ctx.restore();
+        }
+    }
+
     /**
      * Draw the fighter on canvas
      * @param {CanvasRenderingContext2D} ctx
      */
     draw(ctx) {
+        // Defeated: rotate the stand sprite 90° to lay flat on the ground
+        if (this.state === 'dead') {
+            const standFrame = this.anims.idle ? this.anims.idle.frames[0] : null;
+            if (standFrame) {
+                const fw = standFrame.width;
+                const fh = standFrame.height;
+                ctx.save();
+                ctx.translate(this.cx, this.groundY - fh * 0.3);
+                // Rotate 90° clockwise: standing → lying face-forward
+                ctx.rotate(Math.PI / 2);
+                ctx.globalAlpha = 0.8;
+                ctx.drawImage(standFrame, -fw / 2, -fh);
+                ctx.restore();
+            }
+            return;
+        }
+
         const frame = this.currentAnim.currentFrame;
         if (!frame) return;
 
@@ -336,6 +758,18 @@ class Fighter {
                 ctx.fillRect(hitb.x, hitb.y, hitb.w, hitb.h);
                 ctx.strokeRect(hitb.x, hitb.y, hitb.w, hitb.h);
             }
+
+            // Debug beam rect
+            if (this.skillActive && this.name === 'marisa' && this.skillData && this.skillData.phase === 'fire') {
+                const beamRect = this.getBeamRect();
+                if (beamRect) {
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+                    ctx.fillRect(beamRect.x, beamRect.y, beamRect.w, beamRect.h);
+                    ctx.strokeRect(beamRect.x, beamRect.y, beamRect.w, beamRect.h);
+                }
+            }
+
             ctx.restore();
         }
     }
@@ -356,10 +790,7 @@ function checkHit(attacker, target) {
     if (!hitbox) return;
 
     // AABB collision
-    if (hitbox.x < hurtbox.x + hurtbox.w &&
-        hitbox.x + hitbox.w > hurtbox.x &&
-        hitbox.y < hurtbox.y + hurtbox.h &&
-        hitbox.y + hitbox.h > hurtbox.y) {
+    if (rectsOverlap(hitbox, hurtbox)) {
         attacker._atkHit = true;
         target.damage(10);
     }
@@ -371,9 +802,14 @@ function checkHit(attacker, target) {
  * @param {Fighter} f2
  */
 function resolveCollision(f1, f2) {
+    // Only push apart if fighters are at similar vertical level
+    // (prevents ground walkers from pushing platform standers)
+    const verticalDist = Math.abs(f1.cy - f2.cy);
+    if (verticalDist > 60) return;
+
     const dist = Math.abs(f1.cx - f2.cx);
-    if (dist < 100) {
-        const push = (100 - dist) / 2;
+    if (dist < 60) {
+        const push = (60 - dist) / 2;
         if (f1.cx < f2.cx) {
             f1.cx -= push;
             f2.cx += push;

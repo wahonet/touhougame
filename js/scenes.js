@@ -5,6 +5,31 @@
 
 const FONT_FAMILY = '"Microsoft YaHei", "SimHei", "simsun", sans-serif';
 
+// ===================== PLATFORM LAYOUT =====================
+const PLATFORM_LAYOUT = [
+    // Left section
+    { x: 200,  y: 460, w: 192, h: 48, type: 'large' },
+    { x: 480,  y: 370, w: 128, h: 36, type: 'small' },
+    { x: 750,  y: 440, w: 192, h: 48, type: 'large' },
+    { x: 580,  y: 280, w: 128, h: 36, type: 'small' },
+    // Center-left
+    { x: 1050, y: 400, w: 192, h: 48, type: 'large' },
+    { x: 1250, y: 310, w: 128, h: 36, type: 'small' },
+    { x: 900,  y: 250, w: 192, h: 48, type: 'large' },
+    // Center
+    { x: 1500, y: 440, w: 192, h: 48, type: 'large' },
+    { x: 1700, y: 340, w: 192, h: 48, type: 'large' },
+    { x: 1450, y: 240, w: 128, h: 36, type: 'small' },
+    // Center-right
+    { x: 1950, y: 390, w: 128, h: 36, type: 'small' },
+    { x: 2150, y: 300, w: 192, h: 48, type: 'large' },
+    { x: 2050, y: 210, w: 128, h: 36, type: 'small' },
+    // Right section
+    { x: 2450, y: 440, w: 192, h: 48, type: 'large' },
+    { x: 2700, y: 350, w: 128, h: 36, type: 'small' },
+    { x: 2900, y: 460, w: 192, h: 48, type: 'large' }
+];
+
 // ===================== CHARACTER SELECT =====================
 const SelectScene = {
     selectedIndex: -1, // 0=reimu, 1=marisa
@@ -375,24 +400,63 @@ const DialogueScene = {
 
 // ===================== BATTLE SCENE =====================
 const BattleScene = {
+    platforms: [],
+    pickups: [],
+    pickupPopups: [],
+    pickupSpawnTimer: 5,
+    parallaxStars: [],
+    mountainSeed: 0,
+
     init() {
         const groundY = 580;
-        // Player starts on left, AI on right
-        Game.player = new Fighter(Game.playerChar, 350, groundY, 'right', false);
-        Game.enemy = new Fighter(Game.aiChar, 930, groundY, 'left', true);
+        // Player starts on left, AI on right (world coordinates)
+        Game.player = new Fighter(Game.playerChar, 400, groundY, 'right', false);
+        Game.enemy = new Fighter(Game.aiChar, 2800, groundY, 'left', true);
         Game.winner = null;
+
+        // Reset camera
+        Game.camera = { x: 0, targetX: 0 };
+
+        // Build platforms
+        this.platforms = PLATFORM_LAYOUT.map(p => ({
+            x: p.x, y: p.y, w: p.w, h: p.h, type: p.type
+        }));
+
+        // Reset pickups
+        this.pickups = [];
+        this.pickupPopups = [];
+        this.pickupSpawnTimer = 5;
+
+        // Generate parallax stars
+        this.parallaxStars = [];
+        for (let i = 0; i < 120; i++) {
+            this.parallaxStars.push({
+                x: Math.random() * ARENA_WIDTH * 2,
+                y: Math.random() * 450,
+                size: 0.5 + Math.random() * 2,
+                brightness: 0.2 + Math.random() * 0.6,
+                twinkleSpeed: 0.001 + Math.random() * 0.004
+            });
+        }
+        this.mountainSeed = Math.random() * 1000;
     },
 
     update(dt) {
         if (!Game.player || !Game.enemy) return;
 
-        // Read player input
-        const keys = Game.keys;
         const player = Game.player;
         const enemy = Game.enemy;
 
-        player.update(dt, keys, Game.attackPressed, Game.jumpPressed, enemy);
-        enemy.update(dt, {}, false, false, player);
+        // Update camera
+        const midX = (player.cx + enemy.cx) / 2;
+        Game.camera.targetX = midX - SCREEN_WIDTH / 2;
+        Game.camera.x += (Game.camera.targetX - Game.camera.x) * 0.08;
+        Game.camera.x = Math.max(0, Math.min(ARENA_WIDTH - SCREEN_WIDTH, Game.camera.x));
+
+        // Update fighters (with platforms and pickups)
+        const keys = Game.keys;
+        player.update(dt, keys, Game.attackPressed, Game.jumpPressed, Game.skillPressed, enemy, this.platforms, this.pickups);
+        enemy.update(dt, {}, false, false, false, player, this.platforms, this.pickups);
 
         // Hit detection
         checkHit(player, enemy);
@@ -400,6 +464,9 @@ const BattleScene = {
 
         // Collision
         resolveCollision(player, enemy);
+
+        // Update pickups
+        this._updatePickups(dt);
 
         // Check game over
         if (player.state === 'dead' || enemy.state === 'dead') {
@@ -416,56 +483,366 @@ const BattleScene = {
     },
 
     draw(ctx) {
-        const W = 1280, H = 720;
+        const W = SCREEN_WIDTH, H = SCREEN_HEIGHT;
         const groundY = 580;
+        const cam = Game.camera.x;
 
-        // Sky background
+        // ========== PARALLAX BACKGROUND ==========
+
+        // Sky gradient (screen-fixed)
         const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
-        skyGrad.addColorStop(0, '#0a0a2e');
-        skyGrad.addColorStop(0.3, '#1a1050');
-        skyGrad.addColorStop(0.6, '#3a2a6a');
-        skyGrad.addColorStop(1, '#5a4a8a');
+        skyGrad.addColorStop(0, '#050510');
+        skyGrad.addColorStop(0.2, '#0a0a2e');
+        skyGrad.addColorStop(0.4, '#1a1050');
+        skyGrad.addColorStop(0.7, '#2a1a5a');
+        skyGrad.addColorStop(1, '#3a2a6a');
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, W, groundY);
 
-        // Ground
-        const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
-        groundGrad.addColorStop(0, '#4a6a2a');
-        groundGrad.addColorStop(0.3, '#3a5a1a');
-        groundGrad.addColorStop(1, '#2a3a0a');
-        ctx.fillStyle = groundGrad;
-        ctx.fillRect(0, groundY, W, H - groundY);
+        // Stars (parallax 0.05)
+        ctx.save();
+        const starParallax = 0.05;
+        for (const star of this.parallaxStars) {
+            const sx = star.x - cam * starParallax;
+            // Wrap to keep visible
+            const wrappedX = ((sx % (W + 100)) + (W + 100)) % (W + 100) - 50;
+            const twinkle = star.brightness * (0.6 + Math.sin(Date.now() * star.twinkleSpeed + star.x) * 0.4);
+            ctx.fillStyle = `rgba(255, 255, 220, ${twinkle})`;
+            ctx.beginPath();
+            ctx.arc(wrappedX, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
 
-        // Ground line
-        ctx.strokeStyle = 'rgba(100, 180, 60, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, groundY);
-        ctx.lineTo(W, groundY);
-        ctx.stroke();
+        // Distant mountains (parallax 0.2)
+        ctx.save();
+        const mtnParallax = 0.2;
+        const mtnOffset = -cam * mtnParallax;
+        // Draw two layers of mountains
+        this._drawMountains(ctx, mtnOffset, groundY, 0.7, 'rgba(15, 10, 30, 0.6)', 120, 0.003);
+        this._drawMountains(ctx, mtnOffset * 1.3, groundY, 0.85, 'rgba(20, 15, 40, 0.7)', 90, 0.005);
+        ctx.restore();
+
+        // Distant tree silhouettes (parallax 0.35)
+        ctx.save();
+        const treeParallax = 0.35;
+        const treeOffset = -cam * treeParallax;
+        this._drawTreeSilhouettes(ctx, treeOffset, groundY);
+        ctx.restore();
+
+        // ========== WORLD SPACE (camera translated) ==========
+        ctx.save();
+        ctx.translate(-cam, 0);
+
+        // Ground tiles across full arena
+        this._drawGround(ctx, groundY);
+
+        // Draw platforms
+        this._drawPlatforms(ctx);
+
+        // Draw pickups
+        this._drawPickups(ctx);
 
         // Draw fighters
         if (Game.player) Game.player.draw(ctx);
         if (Game.enemy) Game.enemy.draw(ctx);
 
+        // Draw skill effects
+        if (Game.player) Game.player.drawSkill(ctx);
+        if (Game.enemy) Game.enemy.drawSkill(ctx);
+
+        // Draw pickup popups
+        this._drawPickupPopups(ctx);
+
+        ctx.restore();
+
+        // ========== HUD (screen space) ==========
+
         // HP bars
         this._drawHPBar(ctx, Game.player, 30, 20, true);
         this._drawHPBar(ctx, Game.enemy, W - 350, 20, false);
+
+        // Skill cooldown indicators
+        this._drawSkillCooldown(ctx, Game.player, 30, 58, true);
+        this._drawSkillCooldown(ctx, Game.enemy, W - 110, 58, false);
 
         // Controls hint
         ctx.save();
         ctx.font = `15px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   R: Restart', W / 2, H - 12);
+        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   K: Skill   R: Restart', W / 2, H - 12);
         ctx.restore();
     },
+
+    // ========== BACKGROUND HELPERS ==========
+
+    _drawMountains(ctx, offset, groundY, heightFactor, color, maxHeight, freq) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(offset - 50, groundY);
+        for (let x = -50; x < SCREEN_WIDTH + 100; x += 4) {
+            const worldX = x - offset;
+            const h = (Math.sin(worldX * freq) * 0.5 + 0.5) * maxHeight * heightFactor +
+                      (Math.sin(worldX * freq * 2.7 + 1) * 0.3 + 0.3) * maxHeight * 0.3 * heightFactor;
+            ctx.lineTo(x + offset, groundY - h);
+        }
+        ctx.lineTo(SCREEN_WIDTH + 100 + offset, groundY);
+        ctx.closePath();
+        ctx.fill();
+    },
+
+    _drawTreeSilhouettes(ctx, offset, groundY) {
+        ctx.fillStyle = 'rgba(15, 25, 10, 0.6)';
+        for (let i = 0; i < 30; i++) {
+            const baseX = (i * 120 + 30) + offset;
+            // Wrap
+            if (baseX < -50 || baseX > SCREEN_WIDTH + 50) continue;
+            const treeH = 30 + (Math.sin(i * 3.7 + this.mountainSeed) * 0.5 + 0.5) * 50;
+            const treeW = 15 + (Math.sin(i * 5.3 + this.mountainSeed) * 0.5 + 0.5) * 20;
+
+            // Triangle tree
+            ctx.beginPath();
+            ctx.moveTo(baseX, groundY);
+            ctx.lineTo(baseX - treeW, groundY);
+            ctx.lineTo(baseX - treeW / 2, groundY - treeH);
+            ctx.lineTo(baseX + treeW / 2, groundY - treeH);
+            ctx.lineTo(baseX + treeW, groundY);
+            ctx.closePath();
+            ctx.fill();
+        }
+    },
+
+    _drawGround(ctx, groundY) {
+        // Main ground fill
+        const groundGrad = ctx.createLinearGradient(0, groundY, 0, SCREEN_HEIGHT);
+        groundGrad.addColorStop(0, '#4a6a2a');
+        groundGrad.addColorStop(0.15, '#3a5a1a');
+        groundGrad.addColorStop(0.5, '#2a4a10');
+        groundGrad.addColorStop(1, '#1a3a08');
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(0, groundY, ARENA_WIDTH, SCREEN_HEIGHT - groundY);
+
+        // Ground line with grass color
+        ctx.strokeStyle = 'rgba(100, 180, 60, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(ARENA_WIDTH, groundY);
+        ctx.stroke();
+
+        // Grass tufts at intervals
+        ctx.save();
+        ctx.strokeStyle = 'rgba(80, 160, 50, 0.4)';
+        ctx.lineWidth = 2;
+        for (let gx = 20; gx < ARENA_WIDTH; gx += 40 + Math.sin(gx * 0.1) * 15) {
+            const h = 5 + Math.sin(gx * 0.3) * 3;
+            ctx.beginPath();
+            ctx.moveTo(gx, groundY);
+            ctx.lineTo(gx - 3, groundY - h);
+            ctx.moveTo(gx, groundY);
+            ctx.lineTo(gx + 3, groundY - h - 1);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Subtle grid lines on ground for depth
+        ctx.save();
+        ctx.strokeStyle = 'rgba(60, 100, 30, 0.15)';
+        ctx.lineWidth = 1;
+        for (let gy = groundY + 30; gy < SCREEN_HEIGHT; gy += 30) {
+            ctx.beginPath();
+            ctx.moveTo(0, gy);
+            ctx.lineTo(ARENA_WIDTH, gy);
+            ctx.stroke();
+        }
+        ctx.restore();
+    },
+
+    // ========== PLATFORM HELPERS ==========
+
+    _drawPlatforms(ctx) {
+        for (const plat of this.platforms) {
+            const asset = plat.type === 'large' ? Assets.platform : Assets.platformSmall;
+            if (asset) {
+                ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
+            } else {
+                // Fallback: draw colored rectangle
+                ctx.save();
+                ctx.fillStyle = plat.type === 'large' ? 'rgba(80, 60, 40, 0.8)' : 'rgba(60, 50, 35, 0.8)';
+                ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+                ctx.strokeStyle = 'rgba(120, 90, 60, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(plat.x, plat.y, plat.w, plat.h);
+                ctx.restore();
+            }
+
+            // Platform surface highlight
+            ctx.save();
+            ctx.strokeStyle = 'rgba(150, 120, 80, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(plat.x + 2, plat.y + 2);
+            ctx.lineTo(plat.x + plat.w - 2, plat.y + 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+    },
+
+    // ========== PICKUP SYSTEM ==========
+
+    _updatePickups(dt) {
+        // Spawn timer
+        this.pickupSpawnTimer -= dt;
+        if (this.pickupSpawnTimer <= 0 && this.pickups.length < 3) {
+            this._spawnPickup();
+            this.pickupSpawnTimer = 10 + Math.random() * 5; // 10-15 seconds
+        }
+
+        // Check collection
+        const fighters = [Game.player, Game.enemy];
+        for (const fighter of fighters) {
+            if (!fighter || fighter.state === 'dead') continue;
+            const hurtbox = fighter.getHurtbox();
+
+            for (let i = this.pickups.length - 1; i >= 0; i--) {
+                const p = this.pickups[i];
+                const pickupRect = { x: p.x, y: p.y, w: p.width, h: p.height };
+                if (rectsOverlap(hurtbox, pickupRect)) {
+                    this._collectPickup(fighter, p);
+                    this.pickups.splice(i, 1);
+                }
+            }
+        }
+
+        // Update popups
+        for (let i = this.pickupPopups.length - 1; i >= 0; i--) {
+            const popup = this.pickupPopups[i];
+            popup.y -= 50 * dt;
+            popup.timer -= dt;
+            if (popup.timer <= 0) {
+                this.pickupPopups.splice(i, 1);
+            }
+        }
+    },
+
+    _spawnPickup() {
+        const type = Math.random() < 0.5 ? 'cd' : 'hp';
+        const spawnOnGround = Math.random() < 0.3;
+        let x, y;
+
+        if (spawnOnGround) {
+            x = 200 + Math.random() * (ARENA_WIDTH - 400);
+            y = 580 - 32; // Just above ground
+        } else {
+            // Spawn on a random platform
+            const plat = this.platforms[Math.floor(Math.random() * this.platforms.length)];
+            x = plat.x + 10 + Math.random() * (plat.w - 52);
+            y = plat.y - 36; // Just above platform
+        }
+
+        this.pickups.push({
+            x: x,
+            y: y,
+            type: type,
+            width: 32,
+            height: 32,
+            bobOffset: Math.random() * Math.PI * 2,
+            spawnTime: Date.now()
+        });
+    },
+
+    _collectPickup(fighter, pickup) {
+        if (pickup.type === 'cd') {
+            fighter.skillCooldown = 0;
+            this.pickupPopups.push({
+                x: pickup.x + 16,
+                y: pickup.y,
+                text: 'CD Reset!',
+                color: '#66ccff',
+                timer: 1.5
+            });
+        } else if (pickup.type === 'hp') {
+            const healAmount = Math.round(MAX_HP * 0.2); // 60 HP
+            fighter.hp = Math.min(MAX_HP, fighter.hp + healAmount);
+            this.pickupPopups.push({
+                x: pickup.x + 16,
+                y: pickup.y,
+                text: `+${healAmount} HP`,
+                color: '#66ff88',
+                timer: 1.5
+            });
+        }
+    },
+
+    _drawPickups(ctx) {
+        for (const p of this.pickups) {
+            const bobY = Math.sin(Date.now() * 0.003 + p.bobOffset) * 8;
+            const drawX = p.x;
+            const drawY = p.y + bobY;
+
+            // Glow effect
+            ctx.save();
+            const glowColor = p.type === 'cd' ? 'rgba(100, 180, 255, 0.3)' : 'rgba(100, 255, 130, 0.3)';
+            ctx.shadowColor = p.type === 'cd' ? '#66ccff' : '#66ff88';
+            ctx.shadowBlur = 15;
+
+            const asset = p.type === 'cd' ? Assets.pickupCd : Assets.pickupHp;
+            if (asset) {
+                ctx.drawImage(asset, drawX, drawY, p.width, p.height);
+            } else {
+                // Fallback: draw colored crystal/heart shape
+                if (p.type === 'cd') {
+                    ctx.fillStyle = '#4488ff';
+                    // Diamond shape
+                    ctx.beginPath();
+                    ctx.moveTo(drawX + 16, drawY);
+                    ctx.lineTo(drawX + 32, drawY + 16);
+                    ctx.lineTo(drawX + 16, drawY + 32);
+                    ctx.lineTo(drawX, drawY + 16);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#88bbff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#44ff66';
+                    // Heart-ish circle
+                    ctx.beginPath();
+                    ctx.arc(drawX + 16, drawY + 16, 14, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Cross symbol
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(drawX + 13, drawY + 8, 6, 16);
+                    ctx.fillRect(drawX + 8, drawY + 13, 16, 6);
+                }
+            }
+            ctx.restore();
+        }
+    },
+
+    _drawPickupPopups(ctx) {
+        for (const popup of this.pickupPopups) {
+            const alpha = Math.min(1, popup.timer / 0.5);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.font = `bold 20px ${FONT_FAMILY}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = popup.color;
+            ctx.shadowColor = popup.color;
+            ctx.shadowBlur = 8;
+            ctx.fillText(popup.text, popup.x, popup.y);
+            ctx.restore();
+        }
+    },
+
+    // ========== HP BAR ==========
 
     _drawHPBar(ctx, fighter, x, y, isLeft) {
         if (!fighter) return;
         const barW = 300, barH = 28;
-        const maxHP = 100;
-        const hpRatio = fighter.hp / maxHP;
+        const hpRatio = fighter.hp / MAX_HP;
 
         // Name
         const displayName = fighter.name === 'reimu' ? '灵梦 Reimu' : '魔理沙 Marisa';
@@ -520,7 +897,91 @@ const BattleScene = {
         ctx.font = `bold 16px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(`${fighter.hp}/${maxHP}`, x + barW / 2, barY + barH - 8);
+        ctx.fillText(`${Math.ceil(fighter.hp)}/${MAX_HP}`, x + barW / 2, barY + barH - 8);
+
+        ctx.restore();
+    },
+
+    // ========== SKILL COOLDOWN UI ==========
+
+    _drawSkillCooldown(ctx, fighter, x, y, isLeft) {
+        if (!fighter) return;
+
+        const boxW = 80, boxH = 24;
+        const isReady = fighter.skillCooldown <= 0 && !fighter.skillActive;
+        const skillName = fighter.name === 'reimu' ? '梦想天生' : '激光炮';
+        const accentColor = fighter.name === 'reimu' ? '#ff6b8a' : '#ffcc00';
+
+        ctx.save();
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        const r = 4;
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + boxW - r, y);
+        ctx.quadraticCurveTo(x + boxW, y, x + boxW, y + r);
+        ctx.lineTo(x + boxW, y + boxH - r);
+        ctx.quadraticCurveTo(x + boxW, y + boxH, x + boxW - r, y + boxH);
+        ctx.lineTo(x + r, y + boxH);
+        ctx.quadraticCurveTo(x, y + boxH, x, y + boxH - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.fill();
+
+        if (isReady) {
+            // Ready - glowing with "K" key indicator
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = accentColor;
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.font = `bold 12px ${FONT_FAMILY}`;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = accentColor;
+            ctx.fillText(skillName, x + 4, y + boxH - 7);
+
+            // "K" key badge
+            const kx = x + boxW - 18;
+            ctx.fillStyle = accentColor;
+            ctx.fillRect(kx, y + 4, 14, 16);
+            ctx.font = `bold 11px ${FONT_FAMILY}`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#000';
+            ctx.fillText('K', kx + 7, y + boxH - 6);
+        } else if (fighter.skillActive) {
+            // Skill is active
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = accentColor;
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.font = `bold 12px ${FONT_FAMILY}`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('CASTING', x + boxW / 2, y + boxH - 7);
+        } else {
+            // On cooldown
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Cooldown progress
+            const cdRatio = fighter.skillCooldown / 15;
+            const cdFillW = boxW * cdRatio;
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
+            ctx.fillRect(x, y, cdFillW, boxH);
+
+            ctx.font = `bold 12px ${FONT_FAMILY}`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillText(`${fighter.skillCooldown.toFixed(1)}s`, x + boxW / 2, y + boxH - 7);
+        }
 
         ctx.restore();
     }

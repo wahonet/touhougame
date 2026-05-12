@@ -840,29 +840,13 @@ const BattleScene = {
                 ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
 
                 // Bright top edge highlight
-        ctx.save();
-        const boxGrad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
-        boxGrad.addColorStop(0, 'rgba(20, 10, 40, 0.9)');
-        boxGrad.addColorStop(1, 'rgba(10, 5, 25, 0.95)');
-        ctx.fillStyle = boxGrad;
-        ctx.beginPath();
-        const br = 12;
-        ctx.moveTo(boxMargin + br, boxY);
-        ctx.lineTo(W - boxMargin - br, boxY);
-        ctx.quadraticCurveTo(W - boxMargin, boxY, W - boxMargin, boxY + br);
-        ctx.lineTo(W - boxMargin, boxY + boxH - br);
-        ctx.quadraticCurveTo(W - boxMargin, boxY + boxH, W - boxMargin - br, boxY + boxH);
-        ctx.lineTo(boxMargin + br, boxY + boxH);
-        ctx.quadraticCurveTo(boxMargin, boxY + boxH, boxMargin, boxY + boxH - br);
-        ctx.lineTo(boxMargin, boxY + br);
-        ctx.quadraticCurveTo(boxMargin, boxY, boxMargin + br, boxY);
-        ctx.closePath();
-        ctx.fill();
-
-        // Border (subtle purple)
-        ctx.strokeStyle = 'rgba(180, 130, 255, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+                ctx.save();
+                ctx.strokeStyle = 'rgba(180, 150, 100, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(plat.x + 3, plat.y + 1);
+                ctx.lineTo(plat.x + plat.w - 3, plat.y + 1);
+                ctx.stroke();
                 ctx.restore();
             } else {
                 // Platform shadow

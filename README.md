@@ -52,10 +52,16 @@ vb_touhou/
 ├── index.html           # Web 版主入口
 ├── style.css            # 样式文件
 ├── js/
-│   ├── animation.js     # Anim 动画帧管理类
-│   ├── fighter.js       # Fighter 战斗角色类（物理、AI、碰撞）
-│   ├── scenes.js        # 场景渲染（选角、对话、战斗、结算）
-│   └── main.js          # 游戏初始化、资源预加载、主循环、状态机
+│   ├── app.js           # 应用装配、主循环、状态机
+│   ├── main.js          # 旧 HTML 兼容启动器
+│   ├── scenes.js        # 旧 HTML 兼容占位
+│   ├── scenes/          # 场景渲染（选角、对话、战斗、结算）
+│   ├── config/          # 全局配置常量
+│   ├── core/            # 资源、音频、输入、运行态等基础服务
+│   ├── data/            # 角色、对话、地图、资源清单等纯数据
+│   ├── entities/        # Fighter、Anim 等实体对象
+│   ├── systems/         # 碰撞、命中等战斗规则系统
+│   └── render/          # 独立渲染辅助
 ├── character/           # 角色立绘（对话场景使用）
 │   ├── reimu_normal.png
 │   ├── reimu_happy.png
@@ -74,6 +80,8 @@ vb_touhou/
 │   └── marisa_attack1.png ~ attack4.png
 └── README.md            # 说明文档
 ```
+
+完整架构说明见 `docs/ARCHITECTURE.md`。后续添加角色、技能、场景或资源前，优先按该文档的模块边界修改。
 
 ## 关于右向角色
 

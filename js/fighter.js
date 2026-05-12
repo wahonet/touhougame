@@ -84,6 +84,13 @@ class Fighter {
             this.aiActionTimer = 0;
             this.aiCooldown = 0;
             this.aiActionTarget = null;
+            this.aiLastDamageTaken = 0;
+            this.aiComboCount = 0;
+            this.aiLastSkillUsed = -1;
+            this.aiThreatLevel = 0;
+            this.aiDodgeCooldown = 0;
+            this.aiComboFollowUp = false;
+            this.aiRetreatTimer = 0;
         }
     }
 
@@ -391,9 +398,10 @@ class Fighter {
         }
     }
 
-    /** AI logic with 4-skill usage and pickup seeking */
+    /** AI logic - priority-based tactical decision system */
     _updateAI(dt, opponent, platforms, pickups) {
         if (this.state === 'attack') return;
+        if (this.state === 'dead') return;
 
         // Face toward opponent
         if (opponent.cx > this.cx) {
@@ -404,138 +412,813 @@ class Fighter {
 
         const dist = Math.abs(this.cx - opponent.cx);
         const hpRatio = this.hp / MAX_HP;
+        const oppHpRatio = opponent.hp / MAX_HP;
+        const dy = Math.abs(this.cy - opponent.cy);
 
-        // Skill 1 (main attack): 25% when medium range
-        if (this.skills[0].cooldown <= 0 && !this.skills[0].active && Math.random() < 0.25) {
-            if (this.name === 'marisa') {
-                const dy = Math.abs(this.cy - opponent.cy);
-                if (dy > 150) {
-                    // skip if not aligned
-                } else {
-                    this.activateSkill(0, opponent);
+        // Tick cooldowns
+        if (this.aiCooldown > 0) this.aiCooldown--;
+        if (this.aiDodgeCooldown > 0) this.aiDodgeCooldown--;
+        if (this.aiRetreatTimer > 0) this.aiRetreatTimer--;
+        this.aiTimer++;
+
+        // ================================================================
+        // LAYER 1: THREAT DETECTION (every frame, highest priority)
+        // ================================================================
+
+        var threat = this._detectThreats(opponent, platforms);
+
+        // React to threats with 3-5 frame delay (stored in aiDodgeCooldown)
+        if (threat.level >= 2 && this.aiDodgeCooldown <= 0) {
+            this._executeDodge(threat, opponent, platforms);
+            return;
+        }
+
+        // Track threat level for decision-making
+        this.aiThreatLevel = threat.level;
+
+        // ================================================================
+        // LAYER 2: SURVIVAL CHECK (every frame)
+        // ================================================================
+
+        if (this._checkSurvival(dt, opponent, pickups, hpRatio, dist, platforms)) return;
+
+        // ================================================================
+        // LAYER 3: COMBO FOLLOW-UP (immediate after landing hit)
+        // ================================================================
+
+        if (this.aiComboFollowUp) {
+            this.aiComboFollowUp = false;
+            // After landing a melee hit, chase and follow up
+            if (dist < 200) {
+                // Close enough for skill follow-up
+                var comboSkill = this._pickComboSkill(opponent, dist, dy);
+                if (comboSkill >= 0) {
+                    this.activateSkill(comboSkill, opponent);
+                    this.aiComboCount++;
+                    this.aiLastSkillUsed = comboSkill;
+                    this.aiCooldown = 5;
+                    return;
+                }
+                // No skill ready, chase for another melee
+                if (dist < 120 && this.aiComboCount < 3) {
+                    this.state = 'attack';
+                    this._atkHit = false;
+                    this._syncAnim();
+                    this.aiComboCount++;
+                    this.aiCooldown = 8;
+                    this.aiComboFollowUp = true;
                     return;
                 }
             } else {
-                this.activateSkill(0, opponent);
-                return;
+                // Chase toward opponent
+                this._moveToward(opponent.cx, this.moveSpeed);
+                this.aiCooldown = 3;
+                if (this.aiComboCount < 2) this.aiComboFollowUp = true;
+            }
+            this.aiComboCount = Math.min(this.aiComboCount, 3);
+            return;
+        }
+
+        // ================================================================
+        // LAYER 4: TACTICAL DECISIONS (every 8-15 frames)
+        // ================================================================
+
+        if (this.aiTimer < this.aiActionTimer) return;
+        this.aiTimer = 0;
+
+        // Add slight randomness to decision interval so AI feels human
+        this.aiActionTimer = 8 + Math.floor(Math.random() * 7);
+
+        // Occasionally make a suboptimal decision (12% chance)
+        if (Math.random() < 0.12) {
+            this._makeSuboptimalDecision(opponent, platforms, pickups, dist);
+            return;
+        }
+
+        // ================================================================
+        // TACTICAL SKILL USAGE
+        // ================================================================
+
+        if (this._tryTacticalSkills(opponent, dist, dy, hpRatio, oppHpRatio, platforms)) return;
+
+        // ================================================================
+        // PICKUP AWARENESS
+        // ================================================================
+
+        if (this._trySeekPickup(pickups, hpRatio, oppHpRatio, opponent)) return;
+
+        // ================================================================
+        // PLATFORM TACTICS
+        // ================================================================
+
+        if (this._tryPlatformTactic(opponent, platforms, hpRatio, dy, dist)) return;
+
+        // ================================================================
+        // CORE BEHAVIOR (HP-based stance)
+        // ================================================================
+
+        this._executeStance(hpRatio, oppHpRatio, dist, dy, opponent, platforms, pickups);
+    }
+
+    // ---- AI HELPER METHODS ----
+
+    /** Detect incoming threats from opponent */
+    _detectThreats(opponent, platforms) {
+        var threat = { level: 0, type: 'none', direction: 0, sourceX: 0, sourceY: 0 };
+
+        // Check opponent melee attack
+        if (opponent.state === 'attack' && !opponent._atkHit) {
+            var hitbox = opponent.getHitbox();
+            if (hitbox) {
+                var myHurtbox = this.getHurtbox();
+                var attackDist = Math.abs(opponent.cx - this.cx);
+                if (attackDist < 180) {
+                    threat.level = 2;
+                    threat.type = 'melee';
+                    threat.direction = opponent.cx < this.cx ? 1 : -1;
+                    threat.sourceX = opponent.cx;
+                    return threat;
+                }
             }
         }
 
-        // Skill 2 (heavy): 15% when close or aligned
-        if (this.skills[1].cooldown <= 0 && !this.skills[1].active && Math.random() < 0.15) {
-            this.activateSkill(1, opponent);
-            return;
-        }
-
-        // Skill 3 (shield/stars): 20% when HP < 50%
-        if (this.skills[2].cooldown <= 0 && !this.skills[2].active && hpRatio < 0.5 && Math.random() < 0.20) {
-            this.activateSkill(2, opponent);
-            return;
-        }
-
-        // Skill 4 (fly for reimu, shield for marisa): 10% when HP < 30%
-        if (this.skills[3].cooldown <= 0 && !this.skills[3].active && (hpRatio < 0.3 || Math.random() < 0.10)) {
-            this.activateSkill(3, opponent);
-            return;
-        }
-
-        // Cooldown
-        if (this.aiCooldown > 0) {
-            this.aiCooldown--;
-            return;
-        }
-
-        this.aiTimer++;
-
-        // Make decision every 40-80 frames
-        if (this.aiTimer >= this.aiActionTimer) {
-            const r = Math.random();
-
-            // Pickup seeking (10% chance)
-            if (pickups && pickups.length > 0 && r < 0.10) {
-                let nearest = null;
-                let nearestDist = Infinity;
-                for (const pickup of pickups) {
-                    const d = Math.abs(this.cx - (pickup.x + pickup.width / 2));
-                    if (d < nearestDist) {
-                        nearestDist = d;
-                        nearest = pickup;
+        // Check opponent projectiles (Reimu spell cards)
+        var spellCards = opponent.skills[0];
+        if (opponent.name === 'reimu' && spellCards.active && spellCards.data && spellCards.data.projectiles) {
+            for (var i = 0; i < spellCards.data.projectiles.length; i++) {
+                var proj = spellCards.data.projectiles[i];
+                if (!proj.active) continue;
+                var pdx = proj.x - this.cx;
+                var pdy = proj.y - (this.cy - this.hurtboxH / 2);
+                var projDist = Math.sqrt(pdx * pdx + pdy * pdy);
+                if (projDist < 200) {
+                    // Check if projectile is heading toward us
+                    var dotProduct = pdx * proj.vx + pdy * proj.vy;
+                    if (dotProduct < 0) {
+                        threat.level = 2;
+                        threat.type = 'projectile';
+                        threat.direction = proj.vx > 0 ? 1 : -1;
+                        threat.sourceX = proj.x;
+                        threat.sourceY = proj.y;
+                        return threat;
                     }
                 }
-                if (nearest && nearestDist < 800) {
-                    this.aiAction = 'seekPickup';
-                    this.aiActionTarget = nearest;
-                    this.aiActionTimer = 30;
-                }
-            } else if (dist < 250 && r < 0.4) {
-                // Attack if close
-                this.aiAction = 'attack';
-                this.aiActionTimer = 1;
-            } else if (r < 0.7) {
-                this.aiAction = 'approach';
-                this.aiActionTimer = 30;
-            } else if (r < 0.85) {
-                this.aiAction = 'jump';
-                this.aiActionTimer = 1;
-            } else {
-                this.aiAction = 'idle';
-                this.aiActionTimer = 20 + Math.floor(Math.random() * 20);
             }
-            this.aiTimer = 0;
         }
 
-        // Execute action
-        switch (this.aiAction) {
-            case 'approach': {
-                const dir = opponent.cx > this.cx ? 1 : -1;
-                this.cx += dir * this.moveSpeed;
+        // Check opponent seal (Reimu skill 1)
+        var sealSkill = opponent.skills[1];
+        if (opponent.name === 'reimu' && sealSkill.active && sealSkill.data && sealSkill.data.seal) {
+            var seal = sealSkill.data.seal;
+            if (seal.active) {
+                var sealDist = Math.sqrt(
+                    Math.pow(seal.x - this.cx, 2) +
+                    Math.pow(seal.y - (this.cy - this.hurtboxH / 2), 2)
+                );
+                if (sealDist < 200) {
+                    threat.level = 2;
+                    threat.type = 'projectile';
+                    threat.direction = seal.x < this.cx ? -1 : 1;
+                    threat.sourceX = seal.x;
+                    threat.sourceY = seal.y;
+                    return threat;
+                }
+            }
+        }
+
+        // Check opponent star storm (Marisa skill 2)
+        var starSkill = opponent.skills[2];
+        if (opponent.name === 'marisa' && starSkill.active && starSkill.data && starSkill.data.stars) {
+            for (var j = 0; j < starSkill.data.stars.length; j++) {
+                var star = starSkill.data.stars[j];
+                if (!star.active) continue;
+                var sdx = star.x - this.cx;
+                var sdy = star.y - (this.cy - this.hurtboxH / 2);
+                var starDist = Math.sqrt(sdx * sdx + sdy * sdy);
+                if (starDist < 180) {
+                    threat.level = 2;
+                    threat.type = 'projectile';
+                    threat.direction = star.vx > 0 ? 1 : -1;
+                    threat.sourceX = star.x;
+                    threat.sourceY = star.y;
+                    return threat;
+                }
+            }
+        }
+
+        // Check opponent lasers (Marisa)
+        if (opponent.name === 'marisa') {
+            var beamRect = opponent.getBeamRect();
+            if (!beamRect) beamRect = opponent.getBigBeamRect();
+            if (beamRect) {
+                var myHb = this.getHurtbox();
+                // If beam is close to overlapping us, it's a threat
+                if (Math.abs(myHb.y + myHb.h / 2 - (beamRect.y + beamRect.h / 2)) < beamRect.h + 30) {
+                    if (beamRect.x < this.cx + this.hurtboxW / 2 + 150 &&
+                        beamRect.x + beamRect.w > this.cx - this.hurtboxW / 2 - 50) {
+                        threat.level = 2;
+                        threat.type = 'laser';
+                        threat.direction = opponent.cx < this.cx ? 1 : -1;
+                        threat.sourceX = opponent.cx;
+                        return threat;
+                    }
+                }
+            }
+        }
+
+        // Low-level caution: opponent is close and facing us
+        var dist = Math.abs(opponent.cx - this.cx);
+        if (dist < 200 && opponent.state !== 'dead') {
+            threat.level = 1;
+            threat.type = 'proximity';
+            threat.direction = opponent.cx < this.cx ? 1 : -1;
+        }
+
+        return threat;
+    }
+
+    /** Execute a dodge maneuver based on threat */
+    _executeDodge(threat, opponent, platforms) {
+        this.aiDodgeCooldown = 4 + Math.floor(Math.random() * 3);
+
+        // Too close to react (under 50px) — sometimes fail to dodge
+        var threatDist = Math.abs(threat.sourceX - this.cx);
+        if (threatDist < 50 && Math.random() < 0.5) return;
+
+        switch (threat.type) {
+            case 'melee':
+                // Jump over or back off from melee
+                if (this.isOnGround && Math.random() < 0.6) {
+                    this.velocityY = -18;
+                    this.isOnGround = false;
+                    this._currentPlatform = null;
+                    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                    // Jump toward a safe direction (away from threat)
+                    var dodgeDir = threat.direction;
+                    this.cx += dodgeDir * this.moveSpeed * 3;
+                } else {
+                    // Back off
+                    this.cx += threat.direction * this.moveSpeed * 2;
+                }
+                this.aiAction = 'dodge';
+                this.aiCooldown = 2;
+                break;
+
+            case 'projectile':
+                // Dodge perpendicular to projectile direction
+                if (this.isOnGround && Math.random() < 0.7) {
+                    this.velocityY = -16 - Math.random() * 4;
+                    this.isOnGround = false;
+                    this._currentPlatform = null;
+                    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                    // Move sideways away from projectile source
+                    this.cx += threat.direction * this.moveSpeed * 2;
+                } else {
+                    // Horizontal dodge
+                    this.cx += threat.direction * this.moveSpeed * 3;
+                }
+                this.aiAction = 'dodge';
+                this.aiCooldown = 3;
+                break;
+
+            case 'laser':
+                // Move out of beam path — jump or move vertically
+                if (this.isOnGround) {
+                    this.velocityY = -18;
+                    this.isOnGround = false;
+                    this._currentPlatform = null;
+                    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                } else {
+                    // Already airborne, try to land on a platform
+                    var bestPlat = this._findNearestPlatform(platforms, 'above');
+                    if (bestPlat) {
+                        var platCx = bestPlat.x + bestPlat.w / 2;
+                        var platDir = platCx > this.cx ? 1 : -1;
+                        this.cx += platDir * this.moveSpeed;
+                    }
+                }
+                this.aiAction = 'dodge';
+                this.aiCooldown = 5;
+                break;
+
+            default:
+                break;
+        }
+
+        // Update walk state
+        if (this.state !== 'idle' && this.state !== 'walk') {
+            this.state = 'idle';
+            this._syncAnim();
+        }
+    }
+
+    /** Survival check: shield, retreat, pickup seeking when low HP */
+    _checkSurvival(dt, opponent, pickups, hpRatio, dist, platforms) {
+        // Critical HP — activate shield if available
+        if (hpRatio < 0.2) {
+            var shieldIdx = this.name === 'reimu' ? 2 : 3;
+            if (this.skills[shieldIdx].cooldown <= 0 && !this.skills[shieldIdx].active && !this.shield) {
+                this.activateSkill(shieldIdx, opponent);
+                this.aiRetreatTimer = 30;
+                return true;
+            }
+
+            // Use fly to escape (Reimu)
+            if (this.name === 'reimu' && this.skills[3].cooldown <= 0 && !this.skills[3].active && !this.flying.active) {
+                this.activateSkill(3, opponent);
+                this.aiRetreatTimer = 25;
+                return true;
+            }
+
+            // Seek HP pickup when critically low
+            if (pickups && pickups.length > 0) {
+                var hpPickup = this._findBestPickup(pickups, 'hp');
+                if (hpPickup) {
+                    var pickupDist = Math.abs(this.cx - (hpPickup.x + hpPickup.width / 2));
+                    if (pickupDist < 600) {
+                        this._moveToward(hpPickup.x + hpPickup.width / 2, this.moveSpeed);
+                        this.aiAction = 'seekPickup';
+                        this.aiActionTarget = hpPickup;
+                        this.aiActionTimer = 5;
+                        return true;
+                    }
+                }
+            }
+
+            // Retreat to nearest platform
+            if (this.aiRetreatTimer > 0 || dist < 250) {
+                var retreatDir = opponent.cx < this.cx ? 1 : -1;
+                this.cx += retreatDir * this.moveSpeed;
                 if (this.state !== 'walk') {
                     this.state = 'walk';
                     this._syncAnim();
                 }
-                break;
-            }
-            case 'attack': {
-                this.state = 'attack';
-                this._atkHit = false;
-                this._syncAnim();
-                this.aiCooldown = 30;
-                this.aiTimer = 0;
-                this.aiActionTimer = 0;
-                break;
-            }
-            case 'jump': {
-                if (this.isOnGround && !this.flying.active) {
+                // Jump to platform if being chased
+                if (this.isOnGround && dist < 200 && Math.random() < 0.3) {
                     this.velocityY = -18;
                     this.isOnGround = false;
                     this._currentPlatform = null;
                     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
                 }
-                this.aiTimer = 0;
-                this.aiActionTimer = 0;
-                break;
-            }
-            case 'seekPickup': {
-                if (this.aiActionTarget) {
-                    const targetX = this.aiActionTarget.x + this.aiActionTarget.width / 2;
-                    const dir = targetX > this.cx ? 1 : -1;
-                    this.cx += dir * this.moveSpeed;
-                    if (this.state !== 'walk') {
-                        this.state = 'walk';
-                        this._syncAnim();
-                    }
-                }
-                break;
-            }
-            case 'idle':
-            default: {
-                if (this.state !== 'idle') {
-                    this.state = 'idle';
-                    this._syncAnim();
-                }
-                break;
+                return true;
             }
         }
+
+        // Medium HP — proactive shield before engaging
+        if (hpRatio < 0.5 && dist < 300) {
+            var shieldIdx2 = this.name === 'reimu' ? 2 : 3;
+            if (this.skills[shieldIdx2].cooldown <= 0 && !this.skills[shieldIdx2].active && !this.shield && Math.random() < 0.15) {
+                this.activateSkill(shieldIdx2, opponent);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Pick best skill for combo follow-up */
+    _pickComboSkill(opponent, dist, dy) {
+        // Try offensive skills first
+        if (this.name === 'reimu') {
+            // Spell cards for spread damage
+            if (this.skills[0].cooldown <= 0 && !this.skills[0].active && dist < 400) return 0;
+            // Seal strike for tracking kill
+            if (this.skills[1].cooldown <= 0 && !this.skills[1].active) return 1;
+        } else {
+            // Star storm when close
+            if (this.skills[2].cooldown <= 0 && !this.skills[2].active && dist < 250) return 2;
+            // Laser when aligned
+            if (this.skills[0].cooldown <= 0 && !this.skills[0].active && dy < 80 && dist > 150) return 0;
+            // Big laser for kill pressure
+            if (this.skills[1].cooldown <= 0 && !this.skills[1].active && dy < 100) return 1;
+        }
+        return -1;
+    }
+
+    /** Try tactical skill usage based on situation */
+    _tryTacticalSkills(opponent, dist, dy, hpRatio, oppHpRatio, platforms) {
+        if (this.name === 'reimu') {
+            return this._tryReimuSkills(opponent, dist, dy, hpRatio, oppHpRatio);
+        } else {
+            return this._tryMarisaSkills(opponent, dist, dy, hpRatio, oppHpRatio);
+        }
+    }
+
+    /** Tactical skill usage for Reimu */
+    _tryReimuSkills(opponent, dist, dy, hpRatio, oppHpRatio) {
+        // Skill 0: Spell cards — best at medium range, when roughly aligned
+        if (this.skills[0].cooldown <= 0 && !this.skills[0].active) {
+            if (dist > 200 && dist < 500 && dy < 120 && Math.random() < 0.35) {
+                this.activateSkill(0, opponent);
+                this.aiLastSkillUsed = 0;
+                this.aiCooldown = 5;
+                return true;
+            }
+            // Also use when closing in and opponent is on platform
+            if (dist < 350 && dy > 50 && dy < 200 && Math.random() < 0.2) {
+                this.activateSkill(0, opponent);
+                this.aiLastSkillUsed = 0;
+                this.aiCooldown = 5;
+                return true;
+            }
+        }
+
+        // Skill 1: Seal strike — kill pressure when opponent low HP, or when opponent is stuck
+        if (this.skills[1].cooldown <= 0 && !this.skills[1].active) {
+            if (oppHpRatio < 0.3 && Math.random() < 0.5) {
+                this.activateSkill(1, opponent);
+                this.aiLastSkillUsed = 1;
+                this.aiCooldown = 8;
+                return true;
+            }
+            // Use when opponent is far and we can't reach
+            if (dist > 400 && Math.random() < 0.2) {
+                this.activateSkill(1, opponent);
+                this.aiLastSkillUsed = 1;
+                this.aiCooldown = 8;
+                return true;
+            }
+        }
+
+        // Skill 3: Fly — escape pressure, reach platforms, dodge horizontal attacks
+        if (this.skills[3].cooldown <= 0 && !this.skills[3].active && !this.flying.active) {
+            // Use when pressured on ground
+            if (hpRatio < 0.4 && dist < 200 && Math.random() < 0.3) {
+                this.activateSkill(3, opponent);
+                this.aiLastSkillUsed = 3;
+                this.aiCooldown = 5;
+                return true;
+            }
+            // Use to approach when opponent is on high platform
+            if (dy > 150 && Math.random() < 0.25) {
+                this.activateSkill(3, opponent);
+                this.aiLastSkillUsed = 3;
+                this.aiCooldown = 5;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Tactical skill usage for Marisa */
+    _tryMarisaSkills(opponent, dist, dy, hpRatio, oppHpRatio) {
+        // Skill 0: Regular laser — best when aligned vertically, medium+ range
+        if (this.skills[0].cooldown <= 0 && !this.skills[0].active) {
+            if (dy < 80 && dist > 250 && dist < 600 && Math.random() < 0.3) {
+                this.activateSkill(0, opponent);
+                this.aiLastSkillUsed = 0;
+                this.aiCooldown = 8;
+                return true;
+            }
+        }
+
+        // Skill 1: Big laser — kill pressure or when aligned
+        if (this.skills[1].cooldown <= 0 && !this.skills[1].active) {
+            if (oppHpRatio < 0.3 && dy < 100 && Math.random() < 0.4) {
+                this.activateSkill(1, opponent);
+                this.aiLastSkillUsed = 1;
+                this.aiCooldown = 10;
+                return true;
+            }
+            if (dy < 60 && dist > 200 && Math.random() < 0.2) {
+                this.activateSkill(1, opponent);
+                this.aiLastSkillUsed = 1;
+                this.aiCooldown = 10;
+                return true;
+            }
+        }
+
+        // Skill 2: Star storm — best when close (maximum hits)
+        if (this.skills[2].cooldown <= 0 && !this.skills[2].active) {
+            if (dist < 200 && Math.random() < 0.4) {
+                this.activateSkill(2, opponent);
+                this.aiLastSkillUsed = 2;
+                this.aiCooldown = 5;
+                return true;
+            }
+            // Use defensively when surrounded
+            if (dist < 300 && hpRatio < 0.5 && Math.random() < 0.25) {
+                this.activateSkill(2, opponent);
+                this.aiLastSkillUsed = 2;
+                this.aiCooldown = 5;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Try seeking pickups based on HP and situation */
+    _trySeekPickup(pickups, hpRatio, oppHpRatio, opponent) {
+        if (!pickups || pickups.length === 0) return false;
+
+        // Don't chase pickups when opponent is low HP — go for kill
+        if (oppHpRatio < 0.2) return false;
+
+        // Seek HP pickup when moderately low
+        if (hpRatio < 0.5) {
+            var hpPickup = this._findBestPickup(pickups, 'hp');
+            if (hpPickup) {
+                var pickupDist = Math.abs(this.cx - (hpPickup.x + hpPickup.width / 2));
+                if (pickupDist < 500 && Math.random() < 0.3) {
+                    this.aiAction = 'seekPickup';
+                    this.aiActionTarget = hpPickup;
+                    this.aiActionTimer = 8;
+                    this._moveToward(hpPickup.x + hpPickup.width / 2, this.moveSpeed);
+                    return true;
+                }
+            }
+        }
+
+        // Consider CD pickup if important skill is on cooldown
+        if (this.skills[1].cooldown > 10) {
+            var cdPickup = this._findBestPickup(pickups, 'cd');
+            if (cdPickup) {
+                var cdDist = Math.abs(this.cx - (cdPickup.x + cdPickup.width / 2));
+                if (cdDist < 400 && Math.random() < 0.15) {
+                    this.aiAction = 'seekPickup';
+                    this.aiActionTarget = cdPickup;
+                    this.aiActionTimer = 8;
+                    this._moveToward(cdPickup.x + cdPickup.width / 2, this.moveSpeed);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** Platform navigation tactics */
+    _tryPlatformTactic(opponent, platforms, hpRatio, dy, dist) {
+        if (!platforms || platforms.length === 0) return false;
+
+        // When low HP, retreat to highest nearby platform
+        if (hpRatio < 0.3 && Math.random() < 0.2) {
+            var safePlat = this._findNearestPlatform(platforms, 'high');
+            if (safePlat) {
+                var platCx = safePlat.x + safePlat.w / 2;
+                var platDx = Math.abs(this.cx - platCx);
+                if (platDx > 30) {
+                    this._moveToward(platCx, this.moveSpeed);
+                    // Jump if platform is above
+                    if (safePlat.y < this.cy - 50 && this.isOnGround) {
+                        this.velocityY = -18;
+                        this.isOnGround = false;
+                        this._currentPlatform = null;
+                        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                    }
+                    this.aiActionTimer = 5;
+                    return true;
+                }
+            }
+        }
+
+        // When opponent is on a high platform, jump to reach them
+        if (dy > 80 && opponent.cy < this.cy && dist < 500) {
+            var approachPlat = this._findNearestPlatform(platforms, 'above');
+            if (approachPlat && this.isOnGround && Math.random() < 0.3) {
+                var aPlatCx = approachPlat.x + approachPlat.w / 2;
+                this._moveToward(aPlatCx, this.moveSpeed);
+                this.velocityY = -18;
+                this.isOnGround = false;
+                this._currentPlatform = null;
+                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                this.aiActionTimer = 5;
+                return true;
+            }
+        }
+
+        // Use platforms to dodge ground-level pressure
+        if (dist < 250 && this.aiThreatLevel >= 1 && this.isOnGround && Math.random() < 0.2) {
+            var dodgePlat = this._findNearestPlatform(platforms, 'above');
+            if (dodgePlat) {
+                var dPlatCx = dodgePlat.x + dodgePlat.w / 2;
+                this._moveToward(dPlatCx, this.moveSpeed * 1.2);
+                this.velocityY = -18;
+                this.isOnGround = false;
+                this._currentPlatform = null;
+                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                this.aiActionTimer = 5;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Execute behavior based on HP stance */
+    _executeStance(hpRatio, oppHpRatio, dist, dy, opponent, platforms, pickups) {
+        // AGGRESSIVE: High HP or opponent low HP
+        if (hpRatio > 0.6 || oppHpRatio < 0.3) {
+            this._aggressiveBehavior(opponent, dist, dy, platforms);
+        }
+        // BALANCED: Medium HP
+        else if (hpRatio > 0.3) {
+            this._balancedBehavior(opponent, dist, dy, platforms);
+        }
+        // DEFENSIVE: Low HP
+        else {
+            this._defensiveBehavior(opponent, dist, platforms, pickups);
+        }
+    }
+
+    /** Aggressive stance: approach, attack, pressure */
+    _aggressiveBehavior(opponent, dist, dy, platforms) {
+        if (dist < 120) {
+            // Melee range — attack
+            this.state = 'attack';
+            this._atkHit = false;
+            this._syncAnim();
+            this.aiCooldown = 5;
+            this.aiComboFollowUp = true;
+            this.aiComboCount = 1;
+        } else if (dist < 300) {
+            // Close range — approach with jump mixup
+            if (Math.random() < 0.25 && this.isOnGround) {
+                this.velocityY = -16 - Math.random() * 4;
+                this.isOnGround = false;
+                this._currentPlatform = null;
+                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+                // Air approach
+                this._moveToward(opponent.cx, this.moveSpeed);
+            } else {
+                this._moveToward(opponent.cx, this.moveSpeed);
+            }
+            this.aiActionTimer = 3;
+        } else {
+            // Long range — fast approach
+            this._moveToward(opponent.cx, this.moveSpeed);
+            this.aiActionTimer = 5;
+        }
+    }
+
+    /** Balanced stance: approach cautiously, dodge more */
+    _balancedBehavior(opponent, dist, dy, platforms) {
+        if (dist < 100) {
+            // Melee range — attack but be ready to dodge
+            this.state = 'attack';
+            this._atkHit = false;
+            this._syncAnim();
+            this.aiCooldown = 8;
+            this.aiComboFollowUp = true;
+            this.aiComboCount = 1;
+        } else if (dist < 300) {
+            // Approach with more caution
+            if (this.aiThreatLevel >= 1 && Math.random() < 0.4) {
+                // Back off slightly then re-approach
+                var awayDir = opponent.cx < this.cx ? 1 : -1;
+                this.cx += awayDir * this.moveSpeed * 0.5;
+                this._moveToward(opponent.cx, this.moveSpeed * 0.7);
+            } else {
+                this._moveToward(opponent.cx, this.moveSpeed);
+            }
+            this.aiActionTimer = 6;
+        } else {
+            this._moveToward(opponent.cx, this.moveSpeed * 0.9);
+            this.aiActionTimer = 8;
+        }
+    }
+
+    /** Defensive stance: keep distance, look for pickups/shield */
+    _defensiveBehavior(opponent, dist, platforms, pickups) {
+        // Keep distance from opponent
+        if (dist < 250) {
+            var retreatDir = opponent.cx < this.cx ? 1 : -1;
+            this.cx += retreatDir * this.moveSpeed;
+            if (this.state !== 'walk') {
+                this.state = 'walk';
+                this._syncAnim();
+            }
+            // Jump away if being chased
+            if (this.isOnGround && dist < 180 && Math.random() < 0.4) {
+                this.velocityY = -18;
+                this.isOnGround = false;
+                this._currentPlatform = null;
+                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+            }
+        } else if (dist > 400) {
+            // Safe distance — stay put or approach slowly
+            if (this.state !== 'idle') {
+                this.state = 'idle';
+                this._syncAnim();
+            }
+        } else {
+            // Maintain distance
+            if (this.state !== 'walk' && this.state !== 'idle') {
+                this.state = 'idle';
+                this._syncAnim();
+            }
+        }
+        this.aiActionTimer = 5;
+    }
+
+    /** Occasionally make a suboptimal decision to feel human */
+    _makeSuboptimalDecision(opponent, platforms, pickups, dist) {
+        var r = Math.random();
+        if (r < 0.3) {
+            // Idle for a moment
+            if (this.state !== 'idle') {
+                this.state = 'idle';
+                this._syncAnim();
+            }
+            this.aiActionTimer = 10 + Math.floor(Math.random() * 15);
+        } else if (r < 0.6) {
+            // Random jump
+            if (this.isOnGround && !this.flying.active) {
+                this.velocityY = -18;
+                this.isOnGround = false;
+                this._currentPlatform = null;
+                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+            }
+            this.aiActionTimer = 8;
+        } else {
+            // Walk in random direction briefly
+            var randomDir = Math.random() < 0.5 ? -1 : 1;
+            this.cx += randomDir * this.moveSpeed;
+            if (this.state !== 'walk') {
+                this.state = 'walk';
+                this._syncAnim();
+            }
+            this.aiActionTimer = 5 + Math.floor(Math.random() * 10);
+        }
+    }
+
+    /** Move toward a target X position */
+    _moveToward(targetX, speed) {
+        var dir = targetX > this.cx ? 1 : -1;
+        this.cx += dir * speed;
+        if (this.state !== 'walk') {
+            this.state = 'walk';
+            this._syncAnim();
+        }
+    }
+
+    /** Find nearest platform by type: 'above', 'high', 'nearest' */
+    _findNearestPlatform(platforms, type) {
+        if (!platforms || platforms.length === 0) return null;
+
+        var best = null;
+        var bestScore = Infinity;
+
+        for (var i = 0; i < platforms.length; i++) {
+            var plat = platforms[i];
+            var platCx = plat.x + plat.w / 2;
+            var dx = Math.abs(this.cx - platCx);
+            var dy = plat.y - this.cy; // negative = above
+
+            var score = dx; // base score is horizontal distance
+
+            if (type === 'above' && dy < -30) {
+                score = dx + Math.abs(dy) * 0.5;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = plat;
+                }
+            } else if (type === 'high' && dy < -50) {
+                // Prefer higher platforms (lower y = higher on screen)
+                score = dx - dy * 2;
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = plat;
+                }
+            } else if (type === 'nearest') {
+                score = Math.sqrt(dx * dx + dy * dy);
+                if (score < bestScore) {
+                    bestScore = score;
+                    best = plat;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    /** Find best pickup by type: 'hp', 'cd', or null for any */
+    _findBestPickup(pickups, type) {
+        if (!pickups || pickups.length === 0) return null;
+
+        var best = null;
+        var bestDist = Infinity;
+
+        for (var i = 0; i < pickups.length; i++) {
+            var pickup = pickups[i];
+            var pickupCx = pickup.x + (pickup.width || 30) / 2;
+            var d = Math.abs(this.cx - pickupCx);
+
+            if (type === 'hp' && pickup.type === 'hp' && d < bestDist) {
+                bestDist = d;
+                best = pickup;
+            } else if (type === 'cd' && pickup.type === 'cd' && d < bestDist) {
+                bestDist = d;
+                best = pickup;
+            } else if (!type && d < bestDist) {
+                bestDist = d;
+                best = pickup;
+            }
+        }
+
+        return best;
     }
 
     // ===================== SKILL SYSTEM =====================

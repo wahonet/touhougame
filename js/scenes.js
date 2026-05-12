@@ -893,122 +893,129 @@ const BattleScene = {
         ctx.restore();
     },
 
-    // ========== SKILL UI (4 boxes) ==========
+    // ========== SKILL UI (circular icons with sweep cooldown) ==========
 
     _drawSkillUI(ctx, fighter, x, y, isPlayer) {
         if (!fighter) return;
 
-        const boxSize = 48;
+        const boxSize = 50;
         const gap = 6;
-        const totalW = boxSize * 4 + gap * 3;
+        const radius = boxSize / 2 - 2;
 
-        // Skill icon colors per character
         const reimuColors = ['#cc3333', '#991133', '#6644aa', '#aa77dd'];
         const marisaColors = ['#ddaa00', '#cc8800', '#cccc44', '#88cc44'];
         const colors = fighter.name === 'reimu' ? reimuColors : marisaColors;
+        const icons = Assets.skillIcons[fighter.name] || [];
 
         for (let i = 0; i < 4; i++) {
             const skill = fighter.skills[i];
             const bx = isPlayer ? x + i * (boxSize + gap) : x + (3 - i) * (boxSize + gap);
             const by = y;
+            const cx = bx + boxSize / 2;
+            const cy = by + boxSize / 2;
 
             const isReady = skill.cooldown <= 0 && !skill.active;
             const isActive = skill.active;
+            const onCooldown = skill.cooldown > 0;
 
             ctx.save();
 
-            // Box background
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            // Circular dark background
             ctx.beginPath();
-            const r = 6;
-            ctx.moveTo(bx + r, by);
-            ctx.lineTo(bx + boxSize - r, by);
-            ctx.quadraticCurveTo(bx + boxSize, by, bx + boxSize, by + r);
-            ctx.lineTo(bx + boxSize, by + boxSize - r);
-            ctx.quadraticCurveTo(bx + boxSize, by + boxSize, bx + boxSize - r, by + boxSize);
-            ctx.lineTo(bx + r, by + boxSize);
-            ctx.quadraticCurveTo(bx, by + boxSize, bx, by + boxSize - r);
-            ctx.lineTo(bx, by + r);
-            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
             ctx.closePath();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fill();
 
-            // Skill icon color block
-            const iconPad = 6;
-            ctx.fillStyle = colors[i];
-            ctx.globalAlpha = isReady ? 0.8 : 0.3;
-            ctx.fillRect(bx + iconPad, by + iconPad, boxSize - iconPad * 2, boxSize - iconPad * 2 - 12);
-            ctx.globalAlpha = 1;
+            // Draw icon image clipped to circle
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+
+            const iconImg = icons[i];
+            if (iconImg) {
+                // Dim icon when on cooldown
+                if (onCooldown) ctx.globalAlpha = 0.4;
+                ctx.drawImage(iconImg, cx - radius, cy - radius, radius * 2, radius * 2);
+                ctx.globalAlpha = 1;
+            } else {
+                // Fallback: colored circle
+                ctx.fillStyle = colors[i];
+                ctx.globalAlpha = isReady ? 0.8 : 0.3;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.font = `bold 10px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(skill.name.substring(0, 2), cx, cy);
+            }
+
+            ctx.restore();
+            ctx.save();
+
+            // Circular sweep cooldown overlay
+            if (onCooldown) {
+                const cdRatio = skill.cooldown / skill.maxCooldown;
+                // Dark pie slice from top clockwise covering cdRatio of the circle
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius + 1, -Math.PI / 2, -Math.PI / 2 + cdRatio * Math.PI * 2, false);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.fill();
+
+                // Countdown text in center
+                ctx.font = `bold 14px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillText(`${skill.cooldown.toFixed(1)}`, cx, cy);
+            }
+
+            // Border based on state
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.closePath();
 
             if (isActive) {
-                // Active: pulsing border
-                const pulse = 0.7 + Math.sin(Date.now() * 0.01) * 0.3;
+                const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
                 ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
                 ctx.lineWidth = 3;
                 ctx.shadowColor = '#ffffff';
                 ctx.shadowBlur = 10;
                 ctx.stroke();
                 ctx.shadowBlur = 0;
-
-                // Skill name (truncated)
-                ctx.font = `bold 9px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#ffffff';
-                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
             } else if (isReady) {
-                // Ready: bright glowing border
                 ctx.strokeStyle = colors[i];
                 ctx.lineWidth = 2;
                 ctx.shadowColor = colors[i];
                 ctx.shadowBlur = 8;
                 ctx.stroke();
                 ctx.shadowBlur = 0;
-
-                // Skill name (truncated)
-                ctx.font = `bold 9px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = colors[i];
-                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
             } else {
-                // On cooldown: darkened overlay with timer
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.lineWidth = 1;
                 ctx.stroke();
-
-                // Cooldown fill
-                const cdRatio = skill.cooldown / skill.maxCooldown;
-                const cdFillH = (boxSize - 12) * cdRatio;
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.fillRect(bx + iconPad, by + iconPad, boxSize - iconPad * 2, cdFillH);
-
-                // Cooldown text
-                ctx.font = `bold 14px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.fillText(`${skill.cooldown.toFixed(1)}s`, bx + boxSize / 2, by + boxSize / 2 - 2);
-
-                // Dimmed skill name
-                ctx.font = `bold 9px ${FONT_FAMILY}`;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
             }
 
             // Key number badge (player only)
             if (isPlayer) {
                 const keyNum = i + 1;
-                const badgeSize = 16;
-                const badgeX = bx + boxSize - badgeSize - 2;
-                const badgeY = by + 2;
+                const badgeR = 8;
+                const badgeCx = bx + boxSize - badgeR - 1;
+                const badgeCy = by + badgeR + 1;
+                ctx.beginPath();
+                ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+                ctx.closePath();
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize);
+                ctx.fill();
                 ctx.font = `bold 11px ${FONT_FAMILY}`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = isReady ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
-                ctx.fillText(`${keyNum}`, badgeX + badgeSize / 2, badgeY + badgeSize / 2);
+                ctx.fillText(`${keyNum}`, badgeCx, badgeCy);
             }
 
             ctx.restore();

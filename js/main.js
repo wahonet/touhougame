@@ -55,7 +55,11 @@ const Assets = {
     platformSmall: null,
     pickupCd: null,
     pickupHp: null,
-    defeated: { reimu: null, marisa: null }
+    defeated: { reimu: null, marisa: null },
+    skillIcons: {
+        reimu: [],
+        marisa: []
+    }
 };
 
 // ===================== ASSET LOADING =====================
@@ -245,6 +249,16 @@ async function preloadAssets() {
     const flyAuraImg = await loadImage('assets/fly_aura.png');
     if (flyAuraImg) {
         Assets.effects.flyAura = flyAuraImg;
+    }
+
+    // Skill icons
+    for (const char of ['reimu', 'marisa']) {
+        for (let i = 1; i <= 4; i++) {
+            const iconImg = await loadImage(`assets/icon_${char}_${i}.png`);
+            if (iconImg) {
+                Assets.skillIcons[char].push(iconImg);
+            }
+        }
     }
 
     // Platform assets

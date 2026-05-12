@@ -6,7 +6,7 @@
 const ARENA_WIDTH = 3200;
 const SCREEN_WIDTH = 1280;
 const SCREEN_HEIGHT = 720;
-const MAX_HP = 300;
+const MAX_HP = 1000;
 
 // ===================== GLOBALS =====================
 const Game = {
@@ -21,7 +21,7 @@ const Game = {
     keys: {},
     attackPressed: false,
     jumpPressed: false,
-    skillPressed: false,
+    skillPressed: { 1: false, 2: false, 3: false, 4: false },
     debugMode: true,
     lastTime: 0,
     camera: { x: 0, targetX: 0 }
@@ -42,7 +42,14 @@ const Assets = {
         spellcardHit: null,
         laserBeam: null,
         laserHead: null,
-        laserCharge: null
+        laserCharge: null,
+        shield: null,
+        star: [],
+        seal: [],
+        sealHit: null,
+        bigLaserBeam: null,
+        bigLaserHead: null,
+        flyAura: null
     },
     platform: null,
     platformSmall: null,
@@ -52,7 +59,7 @@ const Assets = {
 };
 
 // ===================== ASSET LOADING =====================
-const SPRITE_DISPLAY_H = 170;
+const SPRITE_DISPLAY_H = 120;
 
 /**
  * Load a single image
@@ -119,14 +126,12 @@ async function preloadAssets() {
         for (const expr of portraitNames) {
             const img = await loadImage(`character/${char}_${expr}.png`);
             if (img) {
-                // Scale to ~400px for select, store original scaled at 500 for dialogue
                 Assets.portraits[char][expr] = scaleImage(img, 500);
             }
         }
     }
 
     // ---- Action Sprites ----
-    // Stand
     for (const char of chars) {
         const standImg = await loadImage(`action/${char}_stand.png`);
         if (standImg) {
@@ -156,6 +161,14 @@ async function preloadAssets() {
         }
         Assets.sprites[char].left.attack = attackFrames;
         Assets.sprites[char].right.attack = attackFrames.map(f => flipImage(f));
+    }
+
+    // ---- Reimu fly sprite ----
+    const reimuFlyImg = await loadImage('action/reimu_fly.png');
+    if (reimuFlyImg) {
+        const scaledFly = scaleImage(reimuFlyImg, SPRITE_DISPLAY_H);
+        Assets.sprites.reimu.left.fly = scaledFly;
+        Assets.sprites.reimu.right.fly = flipImage(scaledFly);
     }
 
     // ---- Effect Assets ----
@@ -189,6 +202,51 @@ async function preloadAssets() {
         Assets.effects.laserCharge = laserChargeImg;
     }
 
+    // Shield
+    const shieldImg = await loadImage('assets/shield.png');
+    if (shieldImg) {
+        Assets.effects.shield = shieldImg;
+    }
+
+    // Star frames 1-4
+    for (let i = 1; i <= 4; i++) {
+        const img = await loadImage(`assets/star_${i}.png`);
+        if (img) {
+            Assets.effects.star.push(img);
+        }
+    }
+
+    // Seal frames 1-4
+    for (let i = 1; i <= 4; i++) {
+        const img = await loadImage(`assets/seal_${i}.png`);
+        if (img) {
+            Assets.effects.seal.push(img);
+        }
+    }
+
+    // Seal hit
+    const sealHitImg = await loadImage('assets/seal_hit.png');
+    if (sealHitImg) {
+        Assets.effects.sealHit = sealHitImg;
+    }
+
+    // Big laser assets
+    const bigLaserBeamImg = await loadImage('assets/big_laser_beam.png');
+    if (bigLaserBeamImg) {
+        Assets.effects.bigLaserBeam = bigLaserBeamImg;
+    }
+
+    const bigLaserHeadImg = await loadImage('assets/big_laser_head.png');
+    if (bigLaserHeadImg) {
+        Assets.effects.bigLaserHead = bigLaserHeadImg;
+    }
+
+    // Fly aura
+    const flyAuraImg = await loadImage('assets/fly_aura.png');
+    if (flyAuraImg) {
+        Assets.effects.flyAura = flyAuraImg;
+    }
+
     // Platform assets
     const platformImg = await loadImage('assets/platform.png');
     if (platformImg) {
@@ -215,7 +273,7 @@ async function preloadAssets() {
     for (const char of ['reimu', 'marisa']) {
         const defImg = await loadImage(`assets/${char}_defeated.png`);
         if (defImg) {
-            const scale = 170 / Math.max(defImg.height, 1);
+            const scale = SPRITE_DISPLAY_H / Math.max(defImg.height, 1);
             Assets.defeated[char] = scaleImage(defImg, Math.round(defImg.height * scale));
         }
     }
@@ -225,14 +283,12 @@ async function preloadAssets() {
 function drawLoadingScreen(ctx, progress) {
     const W = 1280, H = 720;
 
-    // Background
     const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, '#0a0a1a');
     grad.addColorStop(1, '#1a0a2e');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // Loading text
     ctx.save();
     ctx.font = `bold 36px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
@@ -240,7 +296,6 @@ function drawLoadingScreen(ctx, progress) {
     ctx.fillStyle = '#ffffff';
     ctx.fillText('Loading... 载入中', W / 2, H / 2 - 30);
 
-    // Progress bar
     const barW = 400, barH = 12;
     const barX = (W - barW) / 2;
     const barY = H / 2 + 20;
@@ -256,7 +311,7 @@ function drawLoadingScreen(ctx, progress) {
 
 // ===================== INPUT =====================
 const keyState = {
-    a: false, d: false, w: false, space: false, j: false, k: false
+    a: false, d: false, w: false, space: false, j: false, s: false
 };
 
 function setupInput() {
@@ -267,14 +322,19 @@ function setupInput() {
         if (key === 'a') keyState.a = true;
         if (key === 'd') keyState.d = true;
         if (key === 'w') keyState.w = true;
+        if (key === 's') keyState.s = true;
         if (key === ' ') { keyState.space = true; e.preventDefault(); }
         if (key === 'j') keyState.j = true;
-        if (key === 'k') keyState.k = true;
 
         // One-shot presses
         if (key === 'j') Game.attackPressed = true;
         if (key === 'w' || key === ' ') Game.jumpPressed = true;
-        if (key === 'k') Game.skillPressed = true;
+
+        // Skill keys 1-4
+        if (key === '1') Game.skillPressed[1] = true;
+        if (key === '2') Game.skillPressed[2] = true;
+        if (key === '3') Game.skillPressed[3] = true;
+        if (key === '4') Game.skillPressed[4] = true;
 
         // Scene-specific
         if (Game.state === 'select') {
@@ -297,9 +357,9 @@ function setupInput() {
         if (key === 'a') keyState.a = false;
         if (key === 'd') keyState.d = false;
         if (key === 'w') keyState.w = false;
+        if (key === 's') keyState.s = false;
         if (key === ' ') keyState.space = false;
         if (key === 'j') keyState.j = false;
-        if (key === 'k') keyState.k = false;
     });
 
     // Mouse clicks for select screen
@@ -361,7 +421,7 @@ function gameLoop(timestamp) {
     // Reset one-shot inputs
     Game.attackPressed = false;
     Game.jumpPressed = false;
-    Game.skillPressed = false;
+    Game.skillPressed = { 1: false, 2: false, 3: false, 4: false };
 
     requestAnimationFrame(gameLoop);
 }

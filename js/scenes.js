@@ -64,7 +64,7 @@ const SelectScene = {
     handleKey(key) {
         if (key === '1') this.selectedIndex = 0;
         if (key === '2') this.selectedIndex = 1;
-        if ((key === 'Enter' || key === ' ') && this.selectedIndex >= 0) {
+        if ((key === 'enter' || key === ' ') && this.selectedIndex >= 0) {
             Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
             Game.aiChar = this.selectedIndex === 0 ? 'marisa' : 'reimu';
             Game.state = 'dialogue';
@@ -75,24 +75,23 @@ const SelectScene = {
     draw(ctx) {
         const W = 1280, H = 720;
 
-        // Background - dramatic dark gradient
+        // Background
         const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#0a0a1a');
-        bgGrad.addColorStop(0.5, '#1a0a2e');
-        bgGrad.addColorStop(1, '#0a1a2e');
+        bgGrad.addColorStop(0, '#0a0520');
+        bgGrad.addColorStop(0.5, '#1a0a3a');
+        bgGrad.addColorStop(1, '#0a0a2e');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // Decorative particles / stars
+        // Decorative particles
         ctx.save();
-        for (let i = 0; i < 60; i++) {
-            const sx = (Math.sin(i * 7.3 + Date.now() * 0.0003) * 0.5 + 0.5) * W;
-            const sy = (Math.cos(i * 5.1 + Date.now() * 0.0002) * 0.5 + 0.5) * H;
-            const sr = 1 + Math.sin(i * 3.7 + Date.now() * 0.002) * 0.8;
-            const alpha = 0.3 + Math.sin(i * 2.1 + Date.now() * 0.003) * 0.2;
-            ctx.fillStyle = `rgba(255, 255, 220, ${alpha})`;
+        for (let i = 0; i < 30; i++) {
+            const px = (Math.sin(i * 4.7 + Date.now() * 0.001) * 0.5 + 0.5) * W;
+            const py = (Math.cos(i * 3.2 + Date.now() * 0.0008) * 0.5 + 0.5) * H;
+            const alpha = 0.2 + Math.sin(i * 2.3 + Date.now() * 0.002) * 0.15;
+            ctx.fillStyle = `rgba(255, 180, 220, ${alpha})`;
             ctx.beginPath();
-            ctx.arc(sx, sy, Math.max(0.5, sr), 0, Math.PI * 2);
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
@@ -166,7 +165,7 @@ const SelectScene = {
             ctx.fill();
 
             ctx.shadowBlur = 0;
-            ctx.font = `bold 24px ${FONT_FAMILY}`;
+            ctx.font = `bold 28px ${FONT_FAMILY}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ffffff';
@@ -272,7 +271,7 @@ const DialogueScene = {
     },
 
     handleKey(key) {
-        if (key === 'Enter' || key === ' ') {
+        if (key === 'enter' || key === ' ') {
             this.advance();
         }
     },
@@ -390,7 +389,7 @@ const DialogueScene = {
         // Subtle glow for active speaker
         if (active) {
             ctx.shadowColor = charName === 'reimu' ? '#ff6b8a' : '#ffcc00';
-            ctx.shadowBlur = 30;
+            ctx.shadowBlur = 20;
         }
 
         ctx.drawImage(portrait, x, y, pw, ph);
@@ -456,7 +455,7 @@ const BattleScene = {
         // Update fighters (with platforms and pickups)
         const keys = Game.keys;
         player.update(dt, keys, Game.attackPressed, Game.jumpPressed, Game.skillPressed, enemy, this.platforms, this.pickups);
-        enemy.update(dt, {}, false, false, false, player, this.platforms, this.pickups);
+        enemy.update(dt, {}, false, false, {}, player, this.platforms, this.pickups);
 
         // Hit detection
         checkHit(player, enemy);
@@ -471,7 +470,7 @@ const BattleScene = {
         // Check game over
         if (player.state === 'dead' || enemy.state === 'dead') {
             if (!Game.winner) {
-                Game.winner = player.state === 'dead' ? enemy.name : player.name;
+                Game.winner = player.state !== 'dead' ? player.name : enemy.name;
                 // Small delay before game over
                 setTimeout(() => {
                     if (Game.state === 'battle') {
@@ -518,7 +517,6 @@ const BattleScene = {
         ctx.save();
         const mtnParallax = 0.2;
         const mtnOffset = -cam * mtnParallax;
-        // Draw two layers of mountains
         this._drawMountains(ctx, mtnOffset, groundY, 0.7, 'rgba(15, 10, 30, 0.6)', 120, 0.003);
         this._drawMountains(ctx, mtnOffset * 1.3, groundY, 0.85, 'rgba(20, 15, 40, 0.7)', 90, 0.005);
         ctx.restore();
@@ -562,16 +560,16 @@ const BattleScene = {
         this._drawHPBar(ctx, Game.player, 30, 20, true);
         this._drawHPBar(ctx, Game.enemy, W - 350, 20, false);
 
-        // Skill cooldown indicators
-        this._drawSkillCooldown(ctx, Game.player, 30, 58, true);
-        this._drawSkillCooldown(ctx, Game.enemy, W - 110, 58, false);
+        // Skill UI (4 boxes per fighter)
+        this._drawSkillUI(ctx, Game.player, 30, 58, true);
+        this._drawSkillUI(ctx, Game.enemy, W - 250, 58, false);
 
         // Controls hint
         ctx.save();
         ctx.font = `15px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   K: Skill   R: Restart', W / 2, H - 12);
+        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   1-4: Skills   R: Restart', W / 2, H - 12);
         ctx.restore();
     },
 
@@ -596,12 +594,10 @@ const BattleScene = {
         ctx.fillStyle = 'rgba(15, 25, 10, 0.6)';
         for (let i = 0; i < 30; i++) {
             const baseX = (i * 120 + 30) + offset;
-            // Wrap
             if (baseX < -50 || baseX > SCREEN_WIDTH + 50) continue;
             const treeH = 30 + (Math.sin(i * 3.7 + this.mountainSeed) * 0.5 + 0.5) * 50;
             const treeW = 15 + (Math.sin(i * 5.3 + this.mountainSeed) * 0.5 + 0.5) * 20;
 
-            // Triangle tree
             ctx.beginPath();
             ctx.moveTo(baseX, groundY);
             ctx.lineTo(baseX - treeW, groundY);
@@ -667,7 +663,6 @@ const BattleScene = {
             if (asset) {
                 ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
             } else {
-                // Fallback: draw colored rectangle
                 ctx.save();
                 ctx.fillStyle = plat.type === 'large' ? 'rgba(80, 60, 40, 0.8)' : 'rgba(60, 50, 35, 0.8)';
                 ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
@@ -735,7 +730,6 @@ const BattleScene = {
             x = 200 + Math.random() * (ARENA_WIDTH - 400);
             y = 580 - 32; // Just above ground
         } else {
-            // Spawn on a random platform
             const plat = this.platforms[Math.floor(Math.random() * this.platforms.length)];
             x = plat.x + 10 + Math.random() * (plat.w - 52);
             y = plat.y - 36; // Just above platform
@@ -754,7 +748,10 @@ const BattleScene = {
 
     _collectPickup(fighter, pickup) {
         if (pickup.type === 'cd') {
-            fighter.skillCooldown = 0;
+            // Reset all skill cooldowns
+            for (const skill of fighter.skills) {
+                skill.cooldown = 0;
+            }
             this.pickupPopups.push({
                 x: pickup.x + 16,
                 y: pickup.y,
@@ -763,7 +760,7 @@ const BattleScene = {
                 timer: 1.5
             });
         } else if (pickup.type === 'hp') {
-            const healAmount = Math.round(MAX_HP * 0.2); // 60 HP
+            const healAmount = Math.round(MAX_HP * 0.2); // 200 HP
             fighter.hp = Math.min(MAX_HP, fighter.hp + healAmount);
             this.pickupPopups.push({
                 x: pickup.x + 16,
@@ -781,7 +778,6 @@ const BattleScene = {
             const drawX = p.x;
             const drawY = p.y + bobY;
 
-            // Glow effect
             ctx.save();
             const glowColor = p.type === 'cd' ? 'rgba(100, 180, 255, 0.3)' : 'rgba(100, 255, 130, 0.3)';
             ctx.shadowColor = p.type === 'cd' ? '#66ccff' : '#66ff88';
@@ -791,10 +787,8 @@ const BattleScene = {
             if (asset) {
                 ctx.drawImage(asset, drawX, drawY, p.width, p.height);
             } else {
-                // Fallback: draw colored crystal/heart shape
                 if (p.type === 'cd') {
                     ctx.fillStyle = '#4488ff';
-                    // Diamond shape
                     ctx.beginPath();
                     ctx.moveTo(drawX + 16, drawY);
                     ctx.lineTo(drawX + 32, drawY + 16);
@@ -807,11 +801,9 @@ const BattleScene = {
                     ctx.stroke();
                 } else {
                     ctx.fillStyle = '#44ff66';
-                    // Heart-ish circle
                     ctx.beginPath();
                     ctx.arc(drawX + 16, drawY + 16, 14, 0, Math.PI * 2);
                     ctx.fill();
-                    // Cross symbol
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(drawX + 13, drawY + 8, 6, 16);
                     ctx.fillRect(drawX + 8, drawY + 13, 16, 6);
@@ -844,7 +836,6 @@ const BattleScene = {
         const barW = 300, barH = 28;
         const hpRatio = fighter.hp / MAX_HP;
 
-        // Name
         const displayName = fighter.name === 'reimu' ? '灵梦 Reimu' : '魔理沙 Marisa';
         const nameColor = fighter.name === 'reimu' ? '#ff6b8a' : '#ffcc00';
 
@@ -902,88 +893,126 @@ const BattleScene = {
         ctx.restore();
     },
 
-    // ========== SKILL COOLDOWN UI ==========
+    // ========== SKILL UI (4 boxes) ==========
 
-    _drawSkillCooldown(ctx, fighter, x, y, isLeft) {
+    _drawSkillUI(ctx, fighter, x, y, isPlayer) {
         if (!fighter) return;
 
-        const boxW = 80, boxH = 24;
-        const isReady = fighter.skillCooldown <= 0 && !fighter.skillActive;
-        const skillName = fighter.name === 'reimu' ? '梦想天生' : '激光炮';
-        const accentColor = fighter.name === 'reimu' ? '#ff6b8a' : '#ffcc00';
+        const boxSize = 48;
+        const gap = 6;
+        const totalW = boxSize * 4 + gap * 3;
 
-        ctx.save();
+        // Skill icon colors per character
+        const reimuColors = ['#cc3333', '#991133', '#6644aa', '#aa77dd'];
+        const marisaColors = ['#ddaa00', '#cc8800', '#cccc44', '#88cc44'];
+        const colors = fighter.name === 'reimu' ? reimuColors : marisaColors;
 
-        // Background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.beginPath();
-        const r = 4;
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + boxW - r, y);
-        ctx.quadraticCurveTo(x + boxW, y, x + boxW, y + r);
-        ctx.lineTo(x + boxW, y + boxH - r);
-        ctx.quadraticCurveTo(x + boxW, y + boxH, x + boxW - r, y + boxH);
-        ctx.lineTo(x + r, y + boxH);
-        ctx.quadraticCurveTo(x, y + boxH, x, y + boxH - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-        ctx.fill();
+        for (let i = 0; i < 4; i++) {
+            const skill = fighter.skills[i];
+            const bx = isPlayer ? x + i * (boxSize + gap) : x + (3 - i) * (boxSize + gap);
+            const by = y;
 
-        if (isReady) {
-            // Ready - glowing with "K" key indicator
-            ctx.strokeStyle = accentColor;
-            ctx.lineWidth = 2;
-            ctx.shadowColor = accentColor;
-            ctx.shadowBlur = 8;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+            const isReady = skill.cooldown <= 0 && !skill.active;
+            const isActive = skill.active;
 
-            ctx.font = `bold 12px ${FONT_FAMILY}`;
-            ctx.textAlign = 'left';
-            ctx.fillStyle = accentColor;
-            ctx.fillText(skillName, x + 4, y + boxH - 7);
+            ctx.save();
 
-            // "K" key badge
-            const kx = x + boxW - 18;
-            ctx.fillStyle = accentColor;
-            ctx.fillRect(kx, y + 4, 14, 16);
-            ctx.font = `bold 11px ${FONT_FAMILY}`;
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#000';
-            ctx.fillText('K', kx + 7, y + boxH - 6);
-        } else if (fighter.skillActive) {
-            // Skill is active
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.shadowColor = accentColor;
-            ctx.shadowBlur = 10;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
+            // Box background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.beginPath();
+            const r = 6;
+            ctx.moveTo(bx + r, by);
+            ctx.lineTo(bx + boxSize - r, by);
+            ctx.quadraticCurveTo(bx + boxSize, by, bx + boxSize, by + r);
+            ctx.lineTo(bx + boxSize, by + boxSize - r);
+            ctx.quadraticCurveTo(bx + boxSize, by + boxSize, bx + boxSize - r, by + boxSize);
+            ctx.lineTo(bx + r, by + boxSize);
+            ctx.quadraticCurveTo(bx, by + boxSize, bx, by + boxSize - r);
+            ctx.lineTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.closePath();
+            ctx.fill();
 
-            ctx.font = `bold 12px ${FONT_FAMILY}`;
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('CASTING', x + boxW / 2, y + boxH - 7);
-        } else {
-            // On cooldown
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
+            // Skill icon color block
+            const iconPad = 6;
+            ctx.fillStyle = colors[i];
+            ctx.globalAlpha = isReady ? 0.8 : 0.3;
+            ctx.fillRect(bx + iconPad, by + iconPad, boxSize - iconPad * 2, boxSize - iconPad * 2 - 12);
+            ctx.globalAlpha = 1;
 
-            // Cooldown progress
-            const cdRatio = fighter.skillCooldown / 15;
-            const cdFillW = boxW * cdRatio;
-            ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
-            ctx.fillRect(x, y, cdFillW, boxH);
+            if (isActive) {
+                // Active: pulsing border
+                const pulse = 0.7 + Math.sin(Date.now() * 0.01) * 0.3;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
 
-            ctx.font = `bold 12px ${FONT_FAMILY}`;
-            ctx.textAlign = 'center';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.fillText(`${fighter.skillCooldown.toFixed(1)}s`, x + boxW / 2, y + boxH - 7);
+                // Skill name (truncated)
+                ctx.font = `bold 9px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
+            } else if (isReady) {
+                // Ready: bright glowing border
+                ctx.strokeStyle = colors[i];
+                ctx.lineWidth = 2;
+                ctx.shadowColor = colors[i];
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Skill name (truncated)
+                ctx.font = `bold 9px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = colors[i];
+                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
+            } else {
+                // On cooldown: darkened overlay with timer
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Cooldown fill
+                const cdRatio = skill.cooldown / skill.maxCooldown;
+                const cdFillH = (boxSize - 12) * cdRatio;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(bx + iconPad, by + iconPad, boxSize - iconPad * 2, cdFillH);
+
+                // Cooldown text
+                ctx.font = `bold 14px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillText(`${skill.cooldown.toFixed(1)}s`, bx + boxSize / 2, by + boxSize / 2 - 2);
+
+                // Dimmed skill name
+                ctx.font = `bold 9px ${FONT_FAMILY}`;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillText(skill.name.substring(0, 3), bx + boxSize / 2, by + boxSize - 8);
+            }
+
+            // Key number badge (player only)
+            if (isPlayer) {
+                const keyNum = i + 1;
+                const badgeSize = 16;
+                const badgeX = bx + boxSize - badgeSize - 2;
+                const badgeY = by + 2;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(badgeX, badgeY, badgeSize, badgeSize);
+                ctx.font = `bold 11px ${FONT_FAMILY}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = isReady ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
+                ctx.fillText(`${keyNum}`, badgeX + badgeSize / 2, badgeY + badgeSize / 2);
+            }
+
+            ctx.restore();
         }
-
-        ctx.restore();
     }
 };
 

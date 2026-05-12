@@ -8,6 +8,76 @@ const SCREEN_WIDTH = 1280;
 const SCREEN_HEIGHT = 720;
 const MAX_HP = 1000;
 
+// ===================== AUDIO MANAGER =====================
+const AudioManager = {
+    ctx: null,
+    buffers: {},
+    bgm: null,
+    bgmVolume: 0.3,
+    sfxVolume: 0.5,
+    muted: false,
+
+    async init() {
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) {
+            console.warn('Web Audio API not supported');
+            return;
+        }
+        const sfxFiles = [
+            'sfx_hit', 'sfx_skill', 'sfx_damage', 'sfx_death',
+            'sfx_jump', 'sfx_land', 'sfx_pickup', 'sfx_shield',
+            'sfx_laser', 'sfx_click', 'sfx_ready', 'sfx_seal',
+            'sfx_stars', 'sfx_gameover'
+        ];
+        for (const name of sfxFiles) {
+            try {
+                const resp = await fetch(`audio/${name}.wav`);
+                const arrayBuf = await resp.arrayBuffer();
+                this.buffers[name] = await this.ctx.decodeAudioData(arrayBuf);
+            } catch(e) {
+                console.warn(`Failed to load audio: ${name}`, e);
+            }
+        }
+    },
+
+    play(name, volume) {
+        if (this.muted || !this.ctx || !this.buffers[name]) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.buffers[name];
+        const gain = this.ctx.createGain();
+        gain.gain.value = (volume !== undefined ? volume : this.sfxVolume);
+        source.connect(gain);
+        gain.connect(this.ctx.destination);
+        source.start(0);
+    },
+
+    playBGM(name) {
+        this.stopBGM();
+        const audio = new Audio(`audio/${name}.wav`);
+        audio.loop = true;
+        audio.volume = this.bgmVolume;
+        audio.play().catch(() => {});
+        this.bgm = audio;
+    },
+
+    stopBGM() {
+        if (this.bgm) {
+            this.bgm.pause();
+            this.bgm.currentTime = 0;
+            this.bgm = null;
+        }
+    },
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.bgm) {
+            this.bgm.volume = this.muted ? 0 : this.bgmVolume;
+        }
+    }
+};
+
 // ===================== GLOBALS =====================
 const Game = {
     state: 'loading', // loading → select → dialogue → battle → gameover
@@ -364,6 +434,9 @@ function setupInput() {
                 resetGame();
             }
         }
+
+        // Mute toggle
+        if (key === 'm') AudioManager.toggleMute();
     });
 
     document.addEventListener('keyup', (e) => {
@@ -395,6 +468,7 @@ function resetGame() {
     Game.camera = { x: 0, targetX: 0 };
     Game.state = 'select';
     SelectScene.reset();
+    if (typeof AudioManager !== 'undefined') AudioManager.playBGM('bgm_select');
 }
 
 // ===================== GAME LOOP =====================
@@ -414,6 +488,9 @@ function gameLoop(timestamp) {
 
         case 'select':
             SelectScene.draw(ctx);
+            if (typeof AudioManager !== 'undefined' && (!AudioManager.bgm || !AudioManager.bgm.src || !AudioManager.bgm.src.includes('bgm_select'))) {
+                AudioManager.playBGM('bgm_select');
+            }
             break;
 
         case 'dialogue':
@@ -454,6 +531,17 @@ async function init() {
 
     // Preload assets
     await preloadAssets();
+
+    // Load audio
+    await AudioManager.init();
+
+    // Resume AudioContext on first user interaction (browser autoplay policy)
+    document.addEventListener('click', function resumeAudio() {
+        if (AudioManager.ctx && AudioManager.ctx.state === 'suspended') {
+            AudioManager.ctx.resume();
+        }
+        document.removeEventListener('click', resumeAudio);
+    }, { once: true });
 
     // Transition to select
     Game.state = 'select';

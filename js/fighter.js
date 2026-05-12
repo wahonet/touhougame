@@ -187,6 +187,7 @@ class Fighter {
             this.hp = 0;
             this.state = 'dead';
             this._syncAnim();
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_death');
         }
     }
 
@@ -213,6 +214,9 @@ class Fighter {
             }
             return;
         }
+
+        // Track landing (before physics)
+        this._wasOnGround = this.isOnGround;
 
         // Skill activation (any non-dead state, any skill key)
         for (let i = 0; i < 4; i++) {
@@ -307,6 +311,11 @@ class Fighter {
             }
         }
 
+        // Landing sound
+        if (this.isOnGround && !this._wasOnGround) {
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_land', 0.3);
+        }
+
         // Attack animation finished
         if (this.state === 'attack' && this.currentAnim.isFinished) {
             this.state = 'idle';
@@ -371,6 +380,7 @@ class Fighter {
             this.velocityY = -18;
             this.isOnGround = false;
             this._currentPlatform = null;
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
         }
 
         // Attack
@@ -499,6 +509,7 @@ class Fighter {
                     this.velocityY = -18;
                     this.isOnGround = false;
                     this._currentPlatform = null;
+                    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
                 }
                 this.aiTimer = 0;
                 this.aiActionTimer = 0;
@@ -562,6 +573,7 @@ class Fighter {
 
     /** Skill 0: 梦想天生 - 8 spread projectiles, 15 dmg each */
     _activateReimuSpellCards(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
         skill.data = {
             projectiles: [],
             hitEffects: [],
@@ -585,6 +597,7 @@ class Fighter {
 
     /** Skill 1: 梦想封印 - Tracking seal, 150 dmg */
     _activateReimuSealStrike(skill, opponent) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
         const dir = this.facing === 'right' ? 1 : -1;
         skill.data = {
             seal: {
@@ -601,6 +614,7 @@ class Fighter {
 
     /** Skill 2: 二重结界 - Shield 300 HP, 10s duration */
     _activateReimuBarrier(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
         this.shield = {
             hp: 300,
             maxHp: 300,
@@ -614,6 +628,7 @@ class Fighter {
 
     /** Skill 3: 飞行 - 5 seconds of flight */
     _activateReimuFlight(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
         this.flying.active = true;
         this.flying.timer = 0;
         // Cancel any downward velocity
@@ -625,6 +640,7 @@ class Fighter {
 
     /** Skill 0: 魔法炮 - Regular laser, 30 total dmg */
     _activateMarisaLaser(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_laser');
         skill.data = {
             phase: 'charge',
             chargeTimer: 0,
@@ -636,6 +652,7 @@ class Fighter {
 
     /** Skill 1: 二重魔法炮 - Bigger laser, 100 total dmg */
     _activateMarisaBigLaser(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_laser');
         skill.data = {
             phase: 'charge',
             chargeTimer: 0,
@@ -648,6 +665,7 @@ class Fighter {
 
     /** Skill 2: 群星闪耀 - 16 stars in 360°, 20 dmg each */
     _activateMarisaStarStorm(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
         const stars = [];
         for (let i = 0; i < 16; i++) {
             const angle = (360 / 16) * i * Math.PI / 180;
@@ -666,6 +684,7 @@ class Fighter {
 
     /** Skill 3: 防护罩 - Shield 300 HP, 10s */
     _activateMarisaBarrier(skill) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
         this.shield = {
             hp: 300,
             maxHp: 300,
@@ -1488,6 +1507,8 @@ function checkHit(attacker, target) {
     if (rectsOverlap(hitbox, hurtbox)) {
         attacker._atkHit = true;
         target.damage(10);
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_hit');
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_damage', 0.3);
 
         // Trigger screen shake and hit particles
         if (typeof BattleScene !== 'undefined') {

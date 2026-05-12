@@ -42,10 +42,12 @@ const SelectScene = {
         // Check if clicking on reimu portrait area (left half)
         if (mx < 640 && mx > 80 && my > 100 && my < 620) {
             this.selectedIndex = 0;
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
         }
         // Check if clicking on marisa portrait area (right half)
         if (mx >= 640 && mx < 1200 && my > 100 && my < 620) {
             this.selectedIndex = 1;
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
         }
         // Check if clicking Start button (only when selected)
         if (this.selectedIndex >= 0) {
@@ -62,9 +64,10 @@ const SelectScene = {
     },
 
     handleKey(key) {
-        if (key === '1') this.selectedIndex = 0;
-        if (key === '2') this.selectedIndex = 1;
+        if (key === '1') { this.selectedIndex = 0; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
+        if (key === '2') { this.selectedIndex = 1; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
         if ((key === 'enter' || key === ' ') && this.selectedIndex >= 0) {
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
             Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
             Game.aiChar = this.selectedIndex === 0 ? 'marisa' : 'reimu';
             Game.state = 'dialogue';
@@ -464,6 +467,9 @@ const BattleScene = {
             });
         }
         this.mountainSeed = Math.random() * 1000;
+
+        // Start battle BGM
+        if (typeof AudioManager !== 'undefined') AudioManager.playBGM('bgm_battle');
     },
 
     update(dt) {
@@ -517,6 +523,10 @@ const BattleScene = {
                 setTimeout(() => {
                     if (Game.state === 'battle') {
                         Game.state = 'gameover';
+                        if (typeof AudioManager !== 'undefined') {
+                            AudioManager.stopBGM();
+                            AudioManager.play('sfx_gameover');
+                        }
                     }
                 }, 1500);
             }
@@ -655,7 +665,7 @@ const BattleScene = {
         ctx.font = `15px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   1-4: Skills   R: Restart', W / 2, H - 12);
+        ctx.fillText('A/D: Move   W/Space: Jump   J: Attack   1-4: Skills   R: Restart   M: Mute', W / 2, H - 12);
         ctx.restore();
     },
 
@@ -960,6 +970,7 @@ const BattleScene = {
     },
 
     _collectPickup(fighter, pickup) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_pickup');
         if (pickup.type === 'cd') {
             // Reset all skill cooldowns
             for (const skill of fighter.skills) {

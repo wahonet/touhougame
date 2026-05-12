@@ -1,0 +1,304 @@
+/**
+ * main.js - Game initialization, asset preloading, game loop, state machine
+ */
+
+// ===================== GLOBALS =====================
+const Game = {
+    state: 'loading', // loading → select → dialogue → battle → gameover
+    canvas: null,
+    ctx: null,
+    playerChar: null,
+    aiChar: null,
+    player: null,
+    enemy: null,
+    winner: null,
+    keys: {},
+    attackPressed: false,
+    jumpPressed: false,
+    debugMode: true,
+    lastTime: 0
+};
+
+// Asset storage
+const Assets = {
+    portraits: {
+        reimu: {},
+        marisa: {}
+    },
+    sprites: {
+        reimu: { left: {}, right: {} },
+        marisa: { left: {}, right: {} }
+    }
+};
+
+// ===================== ASSET LOADING =====================
+const SPRITE_DISPLAY_H = 250;
+
+/**
+ * Load a single image
+ * @param {string} src - Relative path to image
+ * @returns {Promise<HTMLImageElement>}
+ */
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+            console.warn(`Failed to load: ${src}`);
+            resolve(null);
+        };
+        img.src = src;
+    });
+}
+
+/**
+ * Flip an image horizontally and return as canvas
+ * @param {HTMLImageElement} img
+ * @returns {HTMLCanvasElement}
+ */
+function flipImage(img) {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0);
+    return canvas;
+}
+
+/**
+ * Scale image to target height, return as canvas
+ * @param {HTMLImageElement} img
+ * @param {number} targetH
+ * @returns {HTMLCanvasElement}
+ */
+function scaleImage(img, targetH) {
+    const scale = targetH / img.height;
+    const w = Math.round(img.width * scale);
+    const h = targetH;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas;
+}
+
+/**
+ * Preload all assets
+ */
+async function preloadAssets() {
+    const ctx = Game.ctx;
+
+    // ---- Portraits ----
+    const portraitNames = ['normal', 'happy', 'angry', 'sad'];
+    const chars = ['reimu', 'marisa'];
+
+    for (const char of chars) {
+        for (const expr of portraitNames) {
+            const img = await loadImage(`character/${char}_${expr}.png`);
+            if (img) {
+                // Scale to ~400px for select, store original scaled at 500 for dialogue
+                Assets.portraits[char][expr] = scaleImage(img, 500);
+            }
+        }
+    }
+
+    // ---- Action Sprites ----
+    // Stand
+    for (const char of chars) {
+        const standImg = await loadImage(`action/${char}_stand.png`);
+        if (standImg) {
+            const scaled = scaleImage(standImg, SPRITE_DISPLAY_H);
+            Assets.sprites[char].left.stand = scaled;
+            Assets.sprites[char].right.stand = flipImage(scaled);
+        }
+
+        // Walk 1-4
+        const walkFrames = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = await loadImage(`action/${char}_walk${i}.png`);
+            if (img) {
+                walkFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
+            }
+        }
+        Assets.sprites[char].left.walk = walkFrames;
+        Assets.sprites[char].right.walk = walkFrames.map(f => flipImage(f));
+
+        // Attack 1-4
+        const attackFrames = [];
+        for (let i = 1; i <= 4; i++) {
+            const img = await loadImage(`action/${char}_attack${i}.png`);
+            if (img) {
+                attackFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
+            }
+        }
+        Assets.sprites[char].left.attack = attackFrames;
+        Assets.sprites[char].right.attack = attackFrames.map(f => flipImage(f));
+    }
+}
+
+// ===================== LOADING SCREEN =====================
+function drawLoadingScreen(ctx, progress) {
+    const W = 1280, H = 720;
+
+    // Background
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#0a0a1a');
+    grad.addColorStop(1, '#1a0a2e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Loading text
+    ctx.save();
+    ctx.font = `bold 36px ${FONT_FAMILY}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Loading... 载入中', W / 2, H / 2 - 30);
+
+    // Progress bar
+    const barW = 400, barH = 12;
+    const barX = (W - barW) / 2;
+    const barY = H / 2 + 20;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = '#ff6b9d';
+    ctx.fillRect(barX, barY, barW * progress, barH);
+
+    ctx.restore();
+}
+
+// ===================== INPUT =====================
+const keyState = {
+    a: false, d: false, w: false, space: false, j: false
+};
+
+function setupInput() {
+    document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+
+        // Track held keys
+        if (key === 'a') keyState.a = true;
+        if (key === 'd') keyState.d = true;
+        if (key === 'w') keyState.w = true;
+        if (key === ' ') { keyState.space = true; e.preventDefault(); }
+        if (key === 'j') keyState.j = true;
+
+        // One-shot presses
+        if (key === 'j') Game.attackPressed = true;
+        if (key === 'w' || key === ' ') Game.jumpPressed = true;
+
+        // Scene-specific
+        if (Game.state === 'select') {
+            SelectScene.handleKey(key);
+        } else if (Game.state === 'dialogue') {
+            DialogueScene.handleKey(key);
+        } else if (Game.state === 'gameover') {
+            if (key === 'r') {
+                resetGame();
+            }
+        } else if (Game.state === 'battle') {
+            if (key === 'r') {
+                resetGame();
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 'a') keyState.a = false;
+        if (key === 'd') keyState.d = false;
+        if (key === 'w') keyState.w = false;
+        if (key === ' ') keyState.space = false;
+        if (key === 'j') keyState.j = false;
+    });
+
+    // Mouse clicks for select screen
+    Game.canvas.addEventListener('click', (e) => {
+        if (Game.state !== 'select') return;
+        const rect = Game.canvas.getBoundingClientRect();
+        const scaleX = 1280 / rect.width;
+        const scaleY = 720 / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+        SelectScene.handleClick(mx, my);
+    });
+}
+
+function resetGame() {
+    Game.player = null;
+    Game.enemy = null;
+    Game.winner = null;
+    Game.state = 'select';
+    SelectScene.reset();
+}
+
+// ===================== GAME LOOP =====================
+function gameLoop(timestamp) {
+    const dt = Math.min((timestamp - Game.lastTime) / 1000, 0.05); // cap at 50ms
+    Game.lastTime = timestamp;
+
+    const ctx = Game.ctx;
+
+    // Copy key state
+    Game.keys = { ...keyState };
+
+    switch (Game.state) {
+        case 'loading':
+            drawLoadingScreen(ctx, 0.5);
+            break;
+
+        case 'select':
+            SelectScene.draw(ctx);
+            break;
+
+        case 'dialogue':
+            DialogueScene.draw(ctx, dt);
+            break;
+
+        case 'battle':
+            BattleScene.update(dt);
+            BattleScene.draw(ctx);
+            break;
+
+        case 'gameover':
+            // Still draw battle underneath
+            BattleScene.draw(ctx);
+            GameOverScene.draw(ctx);
+            break;
+    }
+
+    // Reset one-shot inputs
+    Game.attackPressed = false;
+    Game.jumpPressed = false;
+
+    requestAnimationFrame(gameLoop);
+}
+
+// ===================== INIT =====================
+async function init() {
+    Game.canvas = document.getElementById('gameCanvas');
+    Game.ctx = Game.canvas.getContext('2d');
+    Game.canvas.width = 1280;
+    Game.canvas.height = 720;
+
+    setupInput();
+
+    // Draw initial loading screen
+    drawLoadingScreen(Game.ctx, 0);
+
+    // Preload assets
+    await preloadAssets();
+
+    // Transition to select
+    Game.state = 'select';
+    Game.lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+}
+
+// Start
+window.addEventListener('DOMContentLoaded', init);

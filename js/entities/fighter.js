@@ -255,6 +255,17 @@ export class Fighter {
             if (this.flying.timer >= this.flying.duration) {
                 this.flying.active = false;
                 this.flying.timer = 0;
+                // If at or below ground, snap to ground and mark as grounded
+                if (this.cy >= this.groundY) {
+                    this.cy = this.groundY;
+                    this.velocityY = 0;
+                    this.isOnGround = true;
+                    this._currentPlatform = null;
+                } else {
+                    // In the air after flight ends — start falling
+                    this.isOnGround = false;
+                    this._currentPlatform = null;
+                }
                 // Resume normal anim sync
                 this._syncAnim();
             }
@@ -321,8 +332,9 @@ export class Fighter {
 
         // Clamp position to arena bounds
         const halfW = this.hurtboxW / 2;
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
         if (this.cx < halfW) this.cx = halfW;
-        if (this.cx > ARENA_WIDTH - halfW) this.cx = ARENA_WIDTH - halfW;
+        if (this.cx > boundX - halfW) this.cx = boundX - halfW;
 
         // Hit flash decay
         if (this.hitFlash > 0) {
@@ -356,10 +368,22 @@ export class Fighter {
         if (this.flying.active) {
             if (keys.w) {
                 this.cy -= 4;
+                if (this.isOnGround) {
+                    this.isOnGround = false;
+                    this._currentPlatform = null;
+                }
             }
             if (keys.s) {
                 this.cy += 3;
+                // Cannot fly below ground
+                if (this.cy >= this.groundY) {
+                    this.cy = this.groundY;
+                    this.isOnGround = true;
+                    this._currentPlatform = null;
+                }
             }
+            // Ceiling clamp
+            if (this.cy < 80) this.cy = 80;
         }
 
         // State transitions
@@ -1385,11 +1409,12 @@ export class Fighter {
     }
 
     _calcBeamRect(dir, beamHeight, beamRange) {
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
         const beamY = this.cy - this.hurtboxH / 2 - beamHeight / 2;
         let beamStartX, beamEndX;
         if (dir === 1) {
             beamStartX = this.cx + this.hurtboxW / 2;
-            beamEndX = Math.min(beamStartX + beamRange, ARENA_WIDTH);
+            beamEndX = Math.min(beamStartX + beamRange, boundX);
         } else {
             beamEndX = this.cx - this.hurtboxW / 2;
             beamStartX = Math.max(beamEndX - beamRange, 0);
@@ -1445,7 +1470,8 @@ export class Fighter {
                 }
             }
 
-            if (proj.x < -50 || proj.x > ARENA_WIDTH + 50 ||
+            const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+            if (proj.x < -50 || proj.x > boundX + 50 ||
                 proj.y < -50 || proj.y > SCREEN_HEIGHT + 50) {
                 proj.active = false;
             }
@@ -1566,7 +1592,7 @@ export class Fighter {
                     if (beamRect && opponent.state !== 'dead') {
                         const hurtbox = opponent.getHurtbox();
                         if (rectsOverlap(beamRect, hurtbox)) {
-                            opponent.damage(10);
+                            opponent.damage(20);
                         }
                     }
                 }
@@ -1602,7 +1628,7 @@ export class Fighter {
                     if (beamRect && opponent.state !== 'dead') {
                         const hurtbox = opponent.getHurtbox();
                         if (rectsOverlap(beamRect, hurtbox)) {
-                            opponent.damage(25);
+                            opponent.damage(100);
                         }
                     }
                 }
@@ -1639,18 +1665,9 @@ export class Fighter {
                 }
             }
 
-            // Also check self-hit (stars can hit the caster too)
-            if (this.state !== 'dead' && !star.hitTargets.includes(this)) {
-                const selfHurtbox = this.getHurtbox();
-                if (star.x > selfHurtbox.x && star.x < selfHurtbox.x + selfHurtbox.w &&
-                    star.y > selfHurtbox.y && star.y < selfHurtbox.y + selfHurtbox.h) {
-                    star.hitTargets.push(this);
-                    this.damage(20);
-                }
-            }
-
             // Out of bounds
-            if (star.x < -50 || star.x > ARENA_WIDTH + 50 ||
+            const starBoundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+            if (star.x < -50 || star.x > starBoundX + 50 ||
                 star.y < -50 || star.y > SCREEN_HEIGHT + 50) {
                 star.active = false;
             }

@@ -36,7 +36,9 @@ export function setupInput({ canvas, selectScene, dialogueScene, resetGame, audi
             selectScene.handleKey(key);
         } else if (Game.state === 'dialogue') {
             dialogueScene.handleKey(key);
-        } else if ((Game.state === 'gameover' || Game.state === 'battle') && key === 'r') {
+        } else if ((Game.state === 'gameover' || Game.state === 'battle' ||
+                    Game.state === 'pve' || Game.state === 'pve_victory' ||
+                    Game.state === 'pve_defeat') && key === 'r') {
             resetGame();
         }
 

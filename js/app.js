@@ -8,6 +8,7 @@ import { Game, resetBattleState, resetOneShotInput } from './core/game-state.js'
 import { readHeldKeys, setupInput } from './core/input-controller.js';
 import { drawLoadingScreen } from './render/loading-screen.js';
 import { BattleScene, DialogueScene, GameOverScene, SelectScene } from './scenes/index.js';
+import { PvEScene } from './scenes/pve-scene.js';
 
 function resetGame() {
     resetBattleState();
@@ -45,6 +46,16 @@ function gameLoop(timestamp) {
         case 'gameover':
             BattleScene.draw(ctx);
             GameOverScene.draw(ctx);
+            break;
+
+        case 'pve':
+            PvEScene.update(dt);
+            PvEScene.draw(ctx);
+            break;
+
+        case 'pve_victory':
+        case 'pve_defeat':
+            PvEScene.draw(ctx);
             break;
     }
 

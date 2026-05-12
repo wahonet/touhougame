@@ -19,6 +19,7 @@ import { rectsOverlap, resolveCollision } from '../systems/collision.js';
 import { CHARACTER_DEFINITIONS, getCharacterDefinition } from '../data/characters.js';
 import { DIALOGUE_LINES } from '../data/dialogue-data.js';
 import { GROUND_Y, PLATFORM_LAYOUT } from '../data/stage-data.js';
+import { PvEScene } from './pve-scene.js';
 
 // ===================== CHARACTER SELECT =====================
 export const SelectScene = {
@@ -30,38 +31,55 @@ export const SelectScene = {
 
     handleClick(mx, my) {
         // Check if clicking on reimu portrait area (left half)
-        if (mx < 640 && mx > 80 && my > 100 && my < 620) {
+        if (mx < 640 && mx > 80 && my > 100 && my < 520) {
             this.selectedIndex = 0;
             if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
         }
         // Check if clicking on marisa portrait area (right half)
-        if (mx >= 640 && mx < 1200 && my > 100 && my < 620) {
+        if (mx >= 640 && mx < 1200 && my > 100 && my < 520) {
             this.selectedIndex = 1;
             if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
         }
-        // Check if clicking Start button (only when selected)
+        // Check mode buttons (only when character selected)
         if (this.selectedIndex >= 0) {
-            const btnW = 280, btnH = 56;
-            const btnX = 1280 / 2 - btnW / 2;
-            const btnY = 720 - 90;
-            if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
-                Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
-                Game.aiChar = this.selectedIndex === 0 ? 'marisa' : 'reimu';
-                Game.state = 'dialogue';
-                DialogueScene.reset();
+            const btnW = 200, btnH = 50;
+            const btnY = 720 - 80;
+            const pvpBtnX = 1280 / 2 - btnW - 20;
+            const pveBtnX = 1280 / 2 + 20;
+            if (mx >= pvpBtnX && mx <= pvpBtnX + btnW && my >= btnY && my <= btnY + btnH) {
+                this._startPvP();
+            }
+            if (mx >= pveBtnX && mx <= pveBtnX + btnW && my >= btnY && my <= btnY + btnH) {
+                this._startPvE();
             }
         }
+    },
+
+    _startPvP() {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
+        Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
+        Game.aiChar = this.selectedIndex === 0 ? 'marisa' : 'reimu';
+        Game.gameMode = 'pvp';
+        Game.state = 'dialogue';
+        DialogueScene.reset();
+    },
+
+    _startPvE() {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
+        Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
+        Game.gameMode = 'pve';
+        Game.state = 'pve';
+        PvEScene.init();
     },
 
     handleKey(key) {
         if (key === '1') { this.selectedIndex = 0; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
         if (key === '2') { this.selectedIndex = 1; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
         if ((key === 'enter' || key === ' ') && this.selectedIndex >= 0) {
-            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
-            Game.playerChar = this.selectedIndex === 0 ? 'reimu' : 'marisa';
-            Game.aiChar = this.selectedIndex === 0 ? 'marisa' : 'reimu';
-            Game.state = 'dialogue';
-            DialogueScene.reset();
+            this._startPvP();
+        }
+        if (key === '3' && this.selectedIndex >= 0) {
+            this._startPvE();
         }
     },
 
@@ -76,7 +94,7 @@ export const SelectScene = {
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // Decorative particles (more variety)
+        // Decorative particles
         ctx.save();
         for (let i = 0; i < 50; i++) {
             const px = (Math.sin(i * 4.7 + Date.now() * 0.001) * 0.5 + 0.5) * W;
@@ -96,8 +114,6 @@ export const SelectScene = {
         ctx.font = `bold 52px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        // Title glow
         ctx.shadowColor = '#cc66ff';
         ctx.shadowBlur = 30;
         ctx.fillStyle = '#ffffff';
@@ -117,12 +133,11 @@ export const SelectScene = {
         ctx.restore();
 
         // Character panels
-        const panelW = 480, panelH = 480;
+        const panelW = 480, panelH = 400;
         const reimuX = W / 4 - panelW / 2;
         const marisaX = 3 * W / 4 - panelW / 2;
         const panelY = 120;
 
-        // Draw panels
         const reimu = CHARACTER_DEFINITIONS.reimu;
         const marisa = CHARACTER_DEFINITIONS.marisa;
         this._drawCharPanel(ctx, reimuX, panelY, panelW, panelH, 'reimu', reimu.selectName, this.selectedIndex === 0, reimu.selectAccentColor);
@@ -130,51 +145,66 @@ export const SelectScene = {
 
         // Instructions
         ctx.save();
-        ctx.font = `18px ${FONT_FAMILY}`;
+        ctx.font = `16px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillText('点击角色或按 1/2 选择  |  Enter 确认开始', W / 2, H - 30);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillText('点击角色选择 → 然后点击模式按钮开始  |  1/2: 选择角色  |  Enter: PvP  |  3: PvE', W / 2, H - 100);
         ctx.restore();
 
-        // Start button if selected
+        // Mode buttons if selected
         if (this.selectedIndex >= 0) {
             ctx.save();
-            const btnW = 280, btnH = 56;
-            const btnX = W / 2 - btnW / 2;
-            const btnY = H - 90;
+            const btnW = 200, btnH = 50;
+            const btnY = H - 80;
 
-            // Button glow
+            // PvP button
+            const pvpX = W / 2 - btnW - 15;
             ctx.shadowColor = '#ff6b9d';
-            ctx.shadowBlur = 20;
-
-            const btnGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-            btnGrad.addColorStop(0, '#ff4466');
-            btnGrad.addColorStop(1, '#ff6b9d');
-            ctx.fillStyle = btnGrad;
-
-            // Rounded rect
-            const r = 12;
-            ctx.beginPath();
-            ctx.moveTo(btnX + r, btnY);
-            ctx.lineTo(btnX + btnW - r, btnY);
-            ctx.quadraticCurveTo(btnX + btnW, btnY, btnX + btnW, btnY + r);
-            ctx.lineTo(btnX + btnW, btnY + btnH - r);
-            ctx.quadraticCurveTo(btnX + btnW, btnY + btnH, btnX + btnW - r, btnY + btnH);
-            ctx.lineTo(btnX + r, btnY + btnH);
-            ctx.quadraticCurveTo(btnX, btnY + btnH, btnX, btnY + btnH - r);
-            ctx.lineTo(btnX, btnY + r);
-            ctx.quadraticCurveTo(btnX, btnY, btnX + r, btnY);
-            ctx.closePath();
+            ctx.shadowBlur = 15;
+            const pvpGrad = ctx.createLinearGradient(pvpX, btnY, pvpX + btnW, btnY + btnH);
+            pvpGrad.addColorStop(0, '#ff4466');
+            pvpGrad.addColorStop(1, '#ff6b9d');
+            ctx.fillStyle = pvpGrad;
+            this._roundRect(ctx, pvpX, btnY, btnW, btnH, 10);
             ctx.fill();
-
             ctx.shadowBlur = 0;
-            ctx.font = `bold 28px ${FONT_FAMILY}`;
+            ctx.font = `bold 22px ${FONT_FAMILY}`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ffffff';
-            ctx.fillText('开始战斗 START', btnX + btnW / 2, btnY + btnH / 2);
+            ctx.fillText('PvP 对战', pvpX + btnW / 2, btnY + btnH / 2);
+
+            // PvE button
+            const pveX = W / 2 + 15;
+            ctx.shadowColor = '#66ccff';
+            ctx.shadowBlur = 15;
+            const pveGrad = ctx.createLinearGradient(pveX, btnY, pveX + btnW, btnY + btnH);
+            pveGrad.addColorStop(0, '#3366ff');
+            pveGrad.addColorStop(1, '#66aaff');
+            ctx.fillStyle = pveGrad;
+            this._roundRect(ctx, pveX, btnY, btnW, btnH, 10);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.font = `bold 22px ${FONT_FAMILY}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('PvE 过关', pveX + btnW / 2, btnY + btnH / 2);
+
             ctx.restore();
         }
+    },
+
+    _roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
     },
 
     _drawCharPanel(ctx, x, y, w, h, charName, displayName, selected, accentColor) {
@@ -424,11 +454,15 @@ export const BattleScene = {
         const groundY = GROUND_Y;
         // Player starts on left, AI on right (world coordinates)
         Game.player = new Fighter(Game.playerChar, 400, groundY, 'right', false);
-        Game.enemy = new Fighter(Game.aiChar, 2800, groundY, 'left', true);
+        Game.enemy = new Fighter(Game.aiChar, 900, groundY, 'left', true);
         Game.winner = null;
 
-        // Reset camera
+        // Reset camera — snap to midpoint of both fighters immediately
         Game.camera = createCamera();
+        const initMidX = (400 + 900) / 2;
+        const initCamX = Math.max(0, Math.min(initMidX - SCREEN_WIDTH / 2, ARENA_WIDTH - SCREEN_WIDTH));
+        Game.camera.x = initCamX;
+        Game.camera.targetX = initCamX;
 
         registerBattleHooks({
             addShake: (amount, maxShake) => {
@@ -474,9 +508,22 @@ export const BattleScene = {
         const player = Game.player;
         const enemy = Game.enemy;
 
-        // Update camera
+        // Update camera — ensure both fighters stay on screen
+        const leftMost = Math.min(player.cx, enemy.cx);
+        const rightMost = Math.max(player.cx, enemy.cx);
+        const margin = 150;
+        // Camera must show both fighters with margin
+        const minCamX = Math.max(0, rightMost - SCREEN_WIDTH + margin);
+        const maxCamX = Math.min(ARENA_WIDTH - SCREEN_WIDTH, leftMost - margin);
         const midX = (player.cx + enemy.cx) / 2;
-        Game.camera.targetX = midX - SCREEN_WIDTH / 2;
+        let targetX = midX - SCREEN_WIDTH / 2;
+        // Clamp to keep both visible
+        if (minCamX <= maxCamX) {
+            targetX = Math.max(minCamX, Math.min(maxCamX, targetX));
+        } else {
+            targetX = Math.max(0, Math.min(ARENA_WIDTH - SCREEN_WIDTH, targetX));
+        }
+        Game.camera.targetX = targetX;
         Game.camera.x += (Game.camera.targetX - Game.camera.x) * 0.08;
         Game.camera.x = Math.max(0, Math.min(ARENA_WIDTH - SCREEN_WIDTH, Game.camera.x));
 

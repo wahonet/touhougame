@@ -10,6 +10,8 @@ export const Game = {
     ctx: null,
     playerChar: null,
     aiChar: null,
+    gameMode: 'pvp', // 'pvp' or 'pve'
+    pveLevelWidth: 8000, // Used by Fighter for PvE boundary checks
     player: null,
     enemy: null,
     winner: null,

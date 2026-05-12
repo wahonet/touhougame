@@ -83,15 +83,17 @@ const SelectScene = {
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        // Decorative particles
+        // Decorative particles (more variety)
         ctx.save();
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 50; i++) {
             const px = (Math.sin(i * 4.7 + Date.now() * 0.001) * 0.5 + 0.5) * W;
             const py = (Math.cos(i * 3.2 + Date.now() * 0.0008) * 0.5 + 0.5) * H;
-            const alpha = 0.2 + Math.sin(i * 2.3 + Date.now() * 0.002) * 0.15;
-            ctx.fillStyle = `rgba(255, 180, 220, ${alpha})`;
+            const alpha = 0.15 + Math.sin(i * 2.3 + Date.now() * 0.002) * 0.12;
+            const size = 1 + Math.sin(i * 1.7 + Date.now() * 0.003) * 1;
+            const colors = ['rgba(255, 180, 220, ', 'rgba(180, 160, 255, ', 'rgba(255, 220, 150, '];
+            ctx.fillStyle = colors[i % 3] + alpha + ')';
             ctx.beginPath();
-            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.arc(px, py, Math.max(0.5, size), 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
@@ -103,10 +105,16 @@ const SelectScene = {
         ctx.textBaseline = 'middle';
 
         // Title glow
-        ctx.shadowColor = '#ff6b9d';
+        ctx.shadowColor = '#cc66ff';
         ctx.shadowBlur = 30;
         ctx.fillStyle = '#ffffff';
         ctx.fillText('东方横版战斗 Demo', W / 2, 55);
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = '#cc66ff';
+        ctx.shadowBlur = 60;
+        ctx.globalAlpha = 0.3;
+        ctx.fillText('东方横版战斗 Demo', W / 2, 55);
+        ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
 
         // Subtitle
@@ -324,7 +332,12 @@ const DialogueScene = {
         const boxMargin = 40;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+
+        // Gradient background
+        const boxGrad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
+        boxGrad.addColorStop(0, 'rgba(20, 10, 40, 0.9)');
+        boxGrad.addColorStop(1, 'rgba(10, 5, 25, 0.95)');
+        ctx.fillStyle = boxGrad;
         ctx.beginPath();
         const br = 12;
         ctx.moveTo(boxMargin + br, boxY);
@@ -339,8 +352,12 @@ const DialogueScene = {
         ctx.closePath();
         ctx.fill();
 
-        // Border
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        // Gradient border
+        const borderGrad = ctx.createLinearGradient(boxMargin, boxY, W - boxMargin, boxY + boxH);
+        borderGrad.addColorStop(0, 'rgba(180, 130, 255, 0.5)');
+        borderGrad.addColorStop(0.5, 'rgba(200, 150, 255, 0.3)');
+        borderGrad.addColorStop(1, 'rgba(180, 130, 255, 0.5)');
+        ctx.strokeStyle = borderGrad;
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -352,8 +369,12 @@ const DialogueScene = {
         ctx.font = `bold 28px ${FONT_FAMILY}`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
+        ctx.shadowColor = speakerColor;
+        ctx.shadowBlur = 12;
         ctx.fillStyle = speakerColor;
         ctx.fillText(speakerName, boxMargin + 30, boxY + 20);
+        ctx.shadowBlur = 0;
+        ctx.shadowBlur = 0;
 
         // Dialogue text
         ctx.font = `24px ${FONT_FAMILY}`;
@@ -405,6 +426,9 @@ const BattleScene = {
     pickupSpawnTimer: 5,
     parallaxStars: [],
     mountainSeed: 0,
+    shakeAmount: 0,
+    shakeDecay: 0.9,
+    particles: [],
 
     init() {
         const groundY = 580;
@@ -425,6 +449,8 @@ const BattleScene = {
         this.pickups = [];
         this.pickupPopups = [];
         this.pickupSpawnTimer = 5;
+        this.shakeAmount = 0;
+        this.particles = [];
 
         // Generate parallax stars
         this.parallaxStars = [];
@@ -466,6 +492,22 @@ const BattleScene = {
 
         // Update pickups
         this._updatePickups(dt);
+
+        // Update screen shake
+        if (this.shakeAmount > 0.5) {
+            this.shakeAmount *= this.shakeDecay;
+        } else {
+            this.shakeAmount = 0;
+        }
+
+        // Update particles
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life -= dt;
+            return p.life > 0;
+        });
 
         // Check game over
         if (player.state === 'dead' || enemy.state === 'dead') {
@@ -513,6 +555,26 @@ const BattleScene = {
         }
         ctx.restore();
 
+        // Moon (screen-fixed, upper right)
+        const moonX = W - 180, moonY = 100, moonR = 45;
+        ctx.save();
+        const moonGlow = ctx.createRadialGradient(moonX, moonY, moonR * 0.5, moonX, moonY, moonR * 4);
+        moonGlow.addColorStop(0, 'rgba(200, 210, 255, 0.15)');
+        moonGlow.addColorStop(0.5, 'rgba(150, 160, 200, 0.05)');
+        moonGlow.addColorStop(1, 'rgba(100, 110, 150, 0)');
+        ctx.fillStyle = moonGlow;
+        ctx.fillRect(moonX - moonR * 4, moonY - moonR * 4, moonR * 8, moonR * 8);
+        ctx.beginPath();
+        ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+        ctx.fillStyle = '#e8e0d0';
+        ctx.fill();
+        // Moon shadow (crescent effect)
+        ctx.beginPath();
+        ctx.arc(moonX + 15, moonY - 8, moonR * 0.85, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(10, 10, 40, 0.3)';
+        ctx.fill();
+        ctx.restore();
+
         // Distant mountains (parallax 0.2)
         ctx.save();
         const mtnParallax = 0.2;
@@ -528,8 +590,22 @@ const BattleScene = {
         this._drawTreeSilhouettes(ctx, treeOffset, groundY);
         ctx.restore();
 
+        // Floating clouds (parallax 0.3)
+        ctx.save();
+        const cloudParallax = 0.3;
+        this._drawClouds(ctx, -cam * cloudParallax, groundY);
+        ctx.restore();
+
         // ========== WORLD SPACE (camera translated) ==========
         ctx.save();
+
+        // Apply screen shake
+        if (this.shakeAmount > 0.5) {
+            const shakeX = (Math.random() - 0.5) * this.shakeAmount * 2;
+            const shakeY = (Math.random() - 0.5) * this.shakeAmount * 2;
+            ctx.translate(shakeX, shakeY);
+        }
+
         ctx.translate(-cam, 0);
 
         // Ground tiles across full arena
@@ -552,7 +628,17 @@ const BattleScene = {
         // Draw pickup popups
         this._drawPickupPopups(ctx);
 
+        // Draw particles (world space)
+        this._drawParticles(ctx);
+
         ctx.restore();
+
+        // Fog layer near ground (screen-fixed)
+        const fogGrad = ctx.createLinearGradient(0, groundY - 80, 0, groundY);
+        fogGrad.addColorStop(0, 'rgba(30, 20, 50, 0)');
+        fogGrad.addColorStop(1, 'rgba(30, 20, 50, 0.3)');
+        ctx.fillStyle = fogGrad;
+        ctx.fillRect(0, groundY - 80, W, 80);
 
         // ========== HUD (screen space) ==========
 
@@ -609,6 +695,61 @@ const BattleScene = {
         }
     },
 
+    _drawClouds(ctx, offset, groundY) {
+        const cloudData = [
+            { baseX: 200, y: 200, scale: 1.0 },
+            { baseX: 800, y: 160, scale: 0.8 },
+            { baseX: 1500, y: 220, scale: 1.2 },
+            { baseX: 2200, y: 180, scale: 0.9 },
+            { baseX: 3000, y: 200, scale: 1.1 },
+        ];
+        ctx.fillStyle = 'rgba(30, 20, 60, 0.25)';
+        for (const c of cloudData) {
+            const sx = c.baseX + offset;
+            const wrappedX = ((sx % (SCREEN_WIDTH + 400)) + (SCREEN_WIDTH + 400)) % (SCREEN_WIDTH + 400) - 200;
+            const s = c.scale;
+            ctx.beginPath();
+            ctx.arc(wrappedX, c.y, 40 * s, 0, Math.PI * 2);
+            ctx.arc(wrappedX + 35 * s, c.y - 10 * s, 30 * s, 0, Math.PI * 2);
+            ctx.arc(wrappedX - 30 * s, c.y + 5 * s, 25 * s, 0, Math.PI * 2);
+            ctx.arc(wrappedX + 60 * s, c.y + 5 * s, 20 * s, 0, Math.PI * 2);
+            ctx.arc(wrappedX + 15 * s, c.y + 10 * s, 35 * s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    },
+
+    _spawnHitParticles(x, y, color) {
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1 + Math.random() * 3;
+            const life = 0.3 + Math.random() * 0.3;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 2,
+                life: life,
+                maxLife: life,
+                size: 2 + Math.random() * 3,
+                color: color || '#ffcc44'
+            });
+        }
+    },
+
+    _drawParticles(ctx) {
+        for (const p of this.particles) {
+            const alpha = p.life / p.maxLife;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    },
+
     _drawGround(ctx, groundY) {
         // Main ground fill
         const groundGrad = ctx.createLinearGradient(0, groundY, 0, SCREEN_HEIGHT);
@@ -619,6 +760,21 @@ const BattleScene = {
         ctx.fillStyle = groundGrad;
         ctx.fillRect(0, groundY, ARENA_WIDTH, SCREEN_HEIGHT - groundY);
 
+        // Ground surface glow
+        const surfGlow = ctx.createLinearGradient(0, groundY - 4, 0, groundY + 8);
+        surfGlow.addColorStop(0, 'rgba(100, 200, 60, 0.3)');
+        surfGlow.addColorStop(1, 'rgba(60, 120, 30, 0)');
+        ctx.fillStyle = surfGlow;
+        ctx.fillRect(0, groundY - 4, ARENA_WIDTH, 12);
+
+        // Darker edge line (soil/dirt edge)
+        ctx.strokeStyle = 'rgba(30, 60, 15, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY + 1);
+        ctx.lineTo(ARENA_WIDTH, groundY + 1);
+        ctx.stroke();
+
         // Ground line with grass color
         ctx.strokeStyle = 'rgba(100, 180, 60, 0.6)';
         ctx.lineWidth = 3;
@@ -627,17 +783,19 @@ const BattleScene = {
         ctx.lineTo(ARENA_WIDTH, groundY);
         ctx.stroke();
 
-        // Grass tufts at intervals
+        // Grass tufts at intervals (taller with sway)
         ctx.save();
-        ctx.strokeStyle = 'rgba(80, 160, 50, 0.4)';
         ctx.lineWidth = 2;
+        const grassTime = Date.now() * 0.002;
         for (let gx = 20; gx < ARENA_WIDTH; gx += 40 + Math.sin(gx * 0.1) * 15) {
-            const h = 5 + Math.sin(gx * 0.3) * 3;
+            const h = 8 + Math.sin(gx * 0.3) * 4;
+            const sway = Math.sin(grassTime + gx * 0.05) * 3;
+            ctx.strokeStyle = `rgba(80, 160, 50, ${0.3 + Math.sin(gx * 0.7) * 0.15})`;
             ctx.beginPath();
             ctx.moveTo(gx, groundY);
-            ctx.lineTo(gx - 3, groundY - h);
+            ctx.lineTo(gx - 4 + sway, groundY - h);
             ctx.moveTo(gx, groundY);
-            ctx.lineTo(gx + 3, groundY - h - 1);
+            ctx.lineTo(gx + 4 + sway, groundY - h - 2);
             ctx.stroke();
         }
         ctx.restore();
@@ -661,14 +819,69 @@ const BattleScene = {
         for (const plat of this.platforms) {
             const asset = plat.type === 'large' ? Assets.platform : Assets.platformSmall;
             if (asset) {
-                ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
-            } else {
+                // Platform shadow
                 ctx.save();
-                ctx.fillStyle = plat.type === 'large' ? 'rgba(80, 60, 40, 0.8)' : 'rgba(60, 50, 35, 0.8)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.beginPath();
+                ctx.ellipse(plat.x + plat.w / 2, plat.y + plat.h + 6, plat.w * 0.45, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
+
+                // Bright top edge highlight
+        ctx.save();
+        const boxGrad = ctx.createLinearGradient(0, boxY, 0, boxY + boxH);
+        boxGrad.addColorStop(0, 'rgba(20, 10, 40, 0.9)');
+        boxGrad.addColorStop(1, 'rgba(10, 5, 25, 0.95)');
+        ctx.fillStyle = boxGrad;
+        ctx.beginPath();
+        const br = 12;
+        ctx.moveTo(boxMargin + br, boxY);
+        ctx.lineTo(W - boxMargin - br, boxY);
+        ctx.quadraticCurveTo(W - boxMargin, boxY, W - boxMargin, boxY + br);
+        ctx.lineTo(W - boxMargin, boxY + boxH - br);
+        ctx.quadraticCurveTo(W - boxMargin, boxY + boxH, W - boxMargin - br, boxY + boxH);
+        ctx.lineTo(boxMargin + br, boxY + boxH);
+        ctx.quadraticCurveTo(boxMargin, boxY + boxH, boxMargin, boxY + boxH - br);
+        ctx.lineTo(boxMargin, boxY + br);
+        ctx.quadraticCurveTo(boxMargin, boxY, boxMargin + br, boxY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Border (subtle purple)
+        ctx.strokeStyle = 'rgba(180, 130, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+                ctx.restore();
+            } else {
+                // Platform shadow
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.beginPath();
+                ctx.ellipse(plat.x + plat.w / 2, plat.y + plat.h + 6, plat.w * 0.45, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Platform gradient fill
+                ctx.save();
+                const platGrad = ctx.createLinearGradient(0, plat.y, 0, plat.y + plat.h);
+                platGrad.addColorStop(0, plat.type === 'large' ? 'rgba(120, 90, 55, 0.9)' : 'rgba(100, 80, 50, 0.85)');
+                platGrad.addColorStop(0.15, plat.type === 'large' ? 'rgba(90, 70, 45, 0.85)' : 'rgba(80, 65, 40, 0.8)');
+                platGrad.addColorStop(1, plat.type === 'large' ? 'rgba(60, 45, 30, 0.8)' : 'rgba(50, 40, 28, 0.75)');
+                ctx.fillStyle = platGrad;
                 ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
                 ctx.strokeStyle = 'rgba(120, 90, 60, 0.6)';
                 ctx.lineWidth = 2;
                 ctx.strokeRect(plat.x, plat.y, plat.w, plat.h);
+
+                // Bright top edge
+                ctx.strokeStyle = 'rgba(180, 150, 100, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(plat.x + 3, plat.y + 1);
+                ctx.lineTo(plat.x + plat.w - 3, plat.y + 1);
+                ctx.stroke();
                 ctx.restore();
             }
 
@@ -846,11 +1059,39 @@ const BattleScene = {
         const nameX = isLeft ? x : x + barW;
         ctx.fillText(displayName, nameX, y);
 
-        // Bar background
         const barY = y + 8;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.beginPath();
         const r = 4;
+
+        // Low HP pulsing glow
+        if (hpRatio < 0.25) {
+            const pulse = 0.5 + Math.sin(Date.now() * 0.008) * 0.5;
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 8 * pulse;
+        }
+
+        // Outer dark border
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(x + r - 1, barY - 1);
+        ctx.lineTo(x + barW - r + 1, barY - 1);
+        ctx.quadraticCurveTo(x + barW + 1, barY - 1, x + barW + 1, barY + r - 1);
+        ctx.lineTo(x + barW + 1, barY + barH - r + 1);
+        ctx.quadraticCurveTo(x + barW + 1, barY + barH + 1, x + barW - r + 1, barY + barH + 1);
+        ctx.lineTo(x + r - 1, barY + barH + 1);
+        ctx.quadraticCurveTo(x - 1, barY + barH + 1, x - 1, barY + barH - r + 1);
+        ctx.lineTo(x - 1, barY + r - 1);
+        ctx.quadraticCurveTo(x - 1, barY - 1, x + r - 1, barY - 1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+
+        // Bar background (inner gradient)
+        const bgGrad = ctx.createLinearGradient(0, barY, 0, barY + barH);
+        bgGrad.addColorStop(0, 'rgba(40, 40, 40, 0.9)');
+        bgGrad.addColorStop(1, 'rgba(20, 20, 20, 0.95)');
+        ctx.fillStyle = bgGrad;
+        ctx.beginPath();
         ctx.moveTo(x + r, barY);
         ctx.lineTo(x + barW - r, barY);
         ctx.quadraticCurveTo(x + barW, barY, x + barW, barY + r);
@@ -863,26 +1104,58 @@ const BattleScene = {
         ctx.closePath();
         ctx.fill();
 
-        // HP bar fill
-        let barColor;
-        if (hpRatio > 0.5) barColor = '#4ade80';
-        else if (hpRatio > 0.25) barColor = '#fb923c';
-        else barColor = '#ef4444';
-
+        // HP fill with gradient
         const fillW = Math.max(0, barW * hpRatio);
-        ctx.fillStyle = barColor;
+        if (fillW > 0) {
+            let topColor, botColor;
+            if (hpRatio > 0.5) { topColor = '#6ee7b7'; botColor = '#22c55e'; }
+            else if (hpRatio > 0.25) { topColor = '#fdba74'; botColor = '#f97316'; }
+            else { topColor = '#fca5a5'; botColor = '#ef4444'; }
+
+            const hpGrad = ctx.createLinearGradient(0, barY, 0, barY + barH);
+            hpGrad.addColorStop(0, topColor);
+            hpGrad.addColorStop(1, botColor);
+
+            ctx.fillStyle = hpGrad;
+            ctx.beginPath();
+            ctx.moveTo(x + r, barY);
+            ctx.lineTo(x + fillW - r, barY);
+            ctx.quadraticCurveTo(x + fillW, barY, x + fillW, barY + r);
+            ctx.lineTo(x + fillW, barY + barH - r);
+            ctx.quadraticCurveTo(x + fillW, barY + barH, x + fillW - r, barY + barH);
+            ctx.lineTo(x + r, barY + barH);
+            ctx.quadraticCurveTo(x, barY + barH, x, barY + barH - r);
+            ctx.lineTo(x, barY + r);
+            ctx.quadraticCurveTo(x, barY, x + r, barY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Shine highlight (glass reflection)
+            ctx.save();
+            ctx.clip();
+            const shineGrad = ctx.createLinearGradient(0, barY, 0, barY + barH * 0.4);
+            shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+            shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = shineGrad;
+            ctx.fillRect(x, barY, fillW, barH * 0.4);
+            ctx.restore();
+        }
+
+        // Outer bright border
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x + r, barY);
-        ctx.lineTo(x + fillW - r, barY);
-        ctx.quadraticCurveTo(x + fillW, barY, x + fillW, barY + r);
-        ctx.lineTo(x + fillW, barY + barH - r);
-        ctx.quadraticCurveTo(x + fillW, barY + barH, x + fillW - r, barY + barH);
+        ctx.lineTo(x + barW - r, barY);
+        ctx.quadraticCurveTo(x + barW, barY, x + barW, barY + r);
+        ctx.lineTo(x + barW, barY + barH - r);
+        ctx.quadraticCurveTo(x + barW, barY + barH, x + barW - r, barY + barH);
         ctx.lineTo(x + r, barY + barH);
         ctx.quadraticCurveTo(x, barY + barH, x, barY + barH - r);
         ctx.lineTo(x, barY + r);
         ctx.quadraticCurveTo(x, barY, x + r, barY);
         ctx.closePath();
-        ctx.fill();
+        ctx.stroke();
 
         // HP text
         ctx.font = `bold 16px ${FONT_FAMILY}`;

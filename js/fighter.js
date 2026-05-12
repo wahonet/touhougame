@@ -178,6 +178,11 @@ class Fighter {
         }
 
         this.hitFlash = 0.15;
+        // Trigger screen shake and hit particles
+        if (typeof BattleScene !== 'undefined' && BattleScene) {
+            BattleScene.shakeAmount = Math.min(15, BattleScene.shakeAmount + amount * 0.15);
+            BattleScene._spawnHitParticles(this.cx, this.cy - this.hurtboxH / 2, '#ffcc44');
+        }
         if (this.hp <= 0) {
             this.hp = 0;
             this.state = 'dead';
@@ -1348,6 +1353,20 @@ class Fighter {
      * @param {CanvasRenderingContext2D} ctx
      */
     draw(ctx) {
+        // Drop shadow on ground
+        const groundYRef = this.groundY || 580;
+        const heightAboveGround = groundYRef - this.cy;
+        const shadowScale = Math.max(0.3, 1 - heightAboveGround / 300);
+        const shadowAlpha = Math.max(0.05, 0.25 * shadowScale);
+        const shadowWidth = 30 * shadowScale + 10;
+        const shadowHeight = 6 * shadowScale + 2;
+        ctx.save();
+        ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+        ctx.beginPath();
+        ctx.ellipse(this.cx, groundYRef, shadowWidth, shadowHeight, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
         // Defeated: rotate the stand sprite 90° to lay flat on the ground
         if (this.state === 'dead') {
             const standFrame = this.anims.idle ? this.anims.idle.frames[0] : null;
@@ -1469,6 +1488,15 @@ function checkHit(attacker, target) {
     if (rectsOverlap(hitbox, hurtbox)) {
         attacker._atkHit = true;
         target.damage(10);
+
+        // Trigger screen shake and hit particles
+        if (typeof BattleScene !== 'undefined') {
+            BattleScene.shakeAmount = Math.min(12, (BattleScene.shakeAmount || 0) + 10 * 0.12);
+            BattleScene._spawnHitParticles(
+                target.cx, target.cy - (target.hurtboxH || 50) / 2,
+                '#ffcc44'
+            );
+        }
     }
 }
 

@@ -23,7 +23,11 @@ export const Assets = {
         sealHit: null,
         bigLaserBeam: null,
         bigLaserHead: null,
-        flyAura: null
+        flyAura: null,
+        youmuSpiritSlash: null,
+        youmuGhostBlade: null,
+        youmuGhostTrail: null,
+        youmuSpiritShield: null
     },
     platform: null,
     platformSmall: null,

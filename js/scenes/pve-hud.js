@@ -4,7 +4,6 @@
  */
 import {
     FONT_FAMILY,
-    MAX_HP,
     SCREEN_HEIGHT,
     SCREEN_WIDTH
 } from '../config/game-config.js';
@@ -19,7 +18,8 @@ export function drawHUD(ctx, player, levelConfig, score, killCount) {
 
     const character = getCharacterDefinition(player.name);
     const barW = 300, barH = 24;
-    const hpRatio = player.hp / MAX_HP;
+    const maxHp = player.maxHp || 1000;
+    const hpRatio = player.hp / maxHp;
 
     // Background panel
     ctx.save();
@@ -55,7 +55,7 @@ export function drawHUD(ctx, player, levelConfig, score, killCount) {
     ctx.font = `bold 12px ${FONT_FAMILY}`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText(`${Math.max(0, player.hp)} / ${MAX_HP}`, barX + barW / 2, barY + 16);
+    ctx.fillText(`${Math.max(0, player.hp)} / ${maxHp}`, barX + barW / 2, barY + 16);
 
     // Score & kills (top right)
     ctx.textAlign = 'right';
@@ -282,7 +282,8 @@ export function drawPowerBoost(ctx, player) {
 
 export function calculateRating(player, killCount, levelConfig) {
     const hp = player ? player.hp : 0;
-    const hpRatio = hp / MAX_HP;
+    const maxHp = player ? (player.maxHp || 1000) : 1000;
+    const hpRatio = hp / maxHp;
     if (hpRatio > 0.8 && killCount >= levelConfig.enemies.length * 0.9) return 'S';
     if (hpRatio > 0.5 && killCount >= levelConfig.enemies.length * 0.7) return 'A';
     if (hpRatio > 0.2 && killCount >= levelConfig.enemies.length * 0.5) return 'B';

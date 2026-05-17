@@ -1,209 +1,342 @@
 /**
- * select-scene.js - Character selection screen
- * Handles: character portrait display, PvP/PvE mode selection
+ * select-scene.js - Arcade-style character selection screen.
  */
 import { FONT_FAMILY } from '../config/game-config.js';
 import { Assets } from '../core/asset-store.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { Game } from '../core/game-state.js';
 import { CHARACTER_DEFINITIONS } from '../data/characters.js';
+import { BattleScene } from './battle-scene.js';
 import { PvEScene } from './pve-scene.js';
-import { DialogueScene } from './dialogue-scene.js';
 
-// ===================== CHARACTER SELECT =====================
 const CHAR_IDS = ['reimu', 'marisa', 'yuyuko', 'youmu'];
 
 export const SelectScene = {
-    selectedIndex: -1,
+    selectedIndex: 0,
+    step: 'player',
+    playerIndex: -1,
 
     reset() {
-        this.selectedIndex = -1;
+        this.selectedIndex = 0;
+        this.step = 'player';
+        this.playerIndex = -1;
     },
 
     handleClick(mx, my) {
-        // 2x2 grid: 4 character panels
-        const panelW = 560, panelH = 230;
-        const gapX = 40, gapY = 20;
-        const gridW = panelW * 2 + gapX;
-        const startX = (1280 - gridW) / 2;
-        const startY = 115;
-
-        for (let i = 0; i < 4; i++) {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
-            const px = startX + col * (panelW + gapX);
-            const py = startY + row * (panelH + gapY);
-            if (mx >= px && mx <= px + panelW && my >= py && my <= py + panelH) {
-                this.selectedIndex = i;
-                if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
-                break;
-            }
+        const cell = this._hitAvatar(mx, my);
+        if (cell >= 0) {
+            this.selectedIndex = cell;
+            this._chooseCurrent();
+            return;
         }
 
-        // Check mode buttons (only when character selected)
-        if (this.selectedIndex >= 0) {
-            const btnW = 200, btnH = 50;
-            const btnY = 720 - 80;
-            const pvpBtnX = 1280 / 2 - btnW - 20;
-            const pveBtnX = 1280 / 2 + 20;
-            if (mx >= pvpBtnX && mx <= pvpBtnX + btnW && my >= btnY && my <= btnY + btnH) {
-                this._startPvP();
-            }
-            if (mx >= pveBtnX && mx <= pveBtnX + btnW && my >= btnY && my <= btnY + btnH) {
-                this._startPvE();
-            }
+        const pve = this._pveButtonRect();
+        if (mx >= pve.x && mx <= pve.x + pve.w && my >= pve.y && my <= pve.y + pve.h) {
+            const index = this.playerIndex >= 0 ? this.playerIndex : this.selectedIndex;
+            this._startPvE(index);
         }
-    },
 
-    _startPvP() {
-        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
-        const charId = CHAR_IDS[this.selectedIndex];
-        Game.playerChar = charId;
-        // AI picks a different character
-        const aiOptions = CHAR_IDS.filter(c => c !== charId);
-        Game.aiChar = aiOptions[Math.floor(Math.random() * aiOptions.length)];
-        Game.gameMode = 'pvp';
-        Game.state = 'dialogue';
-        DialogueScene.reset();
-    },
-
-    _startPvE(levelIndex) {
-        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
-        Game.playerChar = CHAR_IDS[this.selectedIndex];
-        Game.gameMode = 'pve';
-        Game.currentLevel = levelIndex || 0;
-        Game.state = 'pve';
-        PvEScene.init(levelIndex || 0);
+        const back = this._backButtonRect();
+        if (this.step === 'opponent' && mx >= back.x && mx <= back.x + back.w && my >= back.y && my <= back.y + back.h) {
+            this.step = 'player';
+            this.playerIndex = -1;
+            this.selectedIndex = 0;
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
+        }
     },
 
     handleKey(key) {
-        if (key === '1') { this.selectedIndex = 0; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
-        if (key === '2') { this.selectedIndex = 1; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
-        if (key === '3') { this.selectedIndex = 2; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
-        if (key === '4') { this.selectedIndex = 3; if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click'); }
-        if ((key === 'enter' || key === ' ') && this.selectedIndex >= 0) {
-            this._startPvP();
+        if (['1', '2', '3', '4'].includes(key)) {
+            this.selectedIndex = Number(key) - 1;
+            this._chooseCurrent();
         }
-        if (key === '5' && this.selectedIndex >= 0) {
-            this._startPvE();
+
+        if (key === 'arrowleft' || key === 'a') this._moveSelection(-1, 0);
+        if (key === 'arrowright' || key === 'd') this._moveSelection(1, 0);
+        if (key === 'arrowup' || key === 'w') this._moveSelection(0, -1);
+        if (key === 'arrowdown' || key === 's') this._moveSelection(0, 1);
+
+        if (key === 'enter' || key === ' ') this._chooseCurrent();
+        if (key === '5') {
+            const index = this.playerIndex >= 0 ? this.playerIndex : this.selectedIndex;
+            this._startPvE(index);
         }
+        if (key === 'escape' || key === 'backspace') {
+            this.step = 'player';
+            this.playerIndex = -1;
+            this.selectedIndex = 0;
+        }
+    },
+
+    _moveSelection(dx, dy) {
+        const col = this.selectedIndex % 2;
+        const row = Math.floor(this.selectedIndex / 2);
+        const nextCol = Math.max(0, Math.min(1, col + dx));
+        const nextRow = Math.max(0, Math.min(1, row + dy));
+        this.selectedIndex = nextRow * 2 + nextCol;
+    },
+
+    _chooseCurrent() {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
+        if (this.step === 'player') {
+            this.playerIndex = this.selectedIndex;
+            this.step = 'opponent';
+            this.selectedIndex = this.selectedIndex === 0 ? 1 : 0;
+        } else {
+            this._startPvP(this.playerIndex, this.selectedIndex);
+        }
+    },
+
+    _startPvP(playerIndex, opponentIndex) {
+        Game.playerChar = CHAR_IDS[playerIndex];
+        Game.aiChar = CHAR_IDS[opponentIndex];
+        Game.gameMode = 'pvp';
+        Game.state = 'battle';
+        BattleScene.init();
+    },
+
+    _startPvE(index) {
+        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_click');
+        Game.playerChar = CHAR_IDS[index];
+        Game.gameMode = 'pve';
+        Game.currentLevel = 0;
+        Game.state = 'pve';
+        PvEScene.init(0);
     },
 
     draw(ctx) {
         const W = 1280, H = 720;
+        const activeChar = CHAR_IDS[this.selectedIndex];
+        const activeDef = CHARACTER_DEFINITIONS[activeChar];
 
-        // Background
-        const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-        bgGrad.addColorStop(0, '#0a0520');
-        bgGrad.addColorStop(0.5, '#1a0a3a');
-        bgGrad.addColorStop(1, '#0a0a2e');
-        ctx.fillStyle = bgGrad;
+        const bg = ctx.createLinearGradient(0, 0, W, H);
+        bg.addColorStop(0, '#100716');
+        bg.addColorStop(0.45, '#251126');
+        bg.addColorStop(1, '#101c28');
+        ctx.fillStyle = bg;
         ctx.fillRect(0, 0, W, H);
 
-        // Decorative particles
-        ctx.save();
-        for (let i = 0; i < 50; i++) {
-            const px = (Math.sin(i * 4.7 + Date.now() * 0.001) * 0.5 + 0.5) * W;
-            const py = (Math.cos(i * 3.2 + Date.now() * 0.0008) * 0.5 + 0.5) * H;
-            const alpha = 0.15 + Math.sin(i * 2.3 + Date.now() * 0.002) * 0.12;
-            const size = 1 + Math.sin(i * 1.7 + Date.now() * 0.003) * 1;
-            const colors = ['rgba(255, 180, 220, ', 'rgba(180, 160, 255, ', 'rgba(255, 220, 150, '];
-            ctx.fillStyle = colors[i % 3] + alpha + ')';
-            ctx.beginPath();
-            ctx.arc(px, py, Math.max(0.5, size), 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.restore();
+        this._drawHeader(ctx, W);
+        this._drawVersusStrip(ctx);
+        this._drawAvatarGrid(ctx);
+        this._drawSkillPanel(ctx, activeChar, activeDef);
+        this._drawFooter(ctx, W, H);
+    },
 
-        // Title
+    _drawHeader(ctx, W) {
         ctx.save();
-        ctx.font = `bold 52px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#cc66ff';
-        ctx.shadowBlur = 30;
+        ctx.font = `bold 42px ${FONT_FAMILY}`;
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('东方横版战斗 Demo', W / 2, 55);
+        ctx.shadowColor = '#ff66aa';
+        ctx.shadowBlur = 24;
+        ctx.fillText('角色选择', W / 2, 48);
         ctx.shadowBlur = 0;
-        ctx.shadowColor = '#cc66ff';
-        ctx.shadowBlur = 60;
-        ctx.globalAlpha = 0.3;
-        ctx.fillText('东方横版战斗 Demo', W / 2, 55);
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-
-        // Subtitle
-        ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillText('选择你的角色  Select Your Character', W / 2, 90);
+        ctx.font = `18px ${FONT_FAMILY}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.58)';
+        ctx.fillText(this.step === 'player' ? '选择己方角色' : '选择对方角色', W / 2, 84);
         ctx.restore();
+    },
 
-        // Character panels (2x2 grid)
-        const panelW = 560, panelH = 230;
-        const gapX = 40, gapY = 20;
-        const gridW = panelW * 2 + gapX;
-        const startX = (W - gridW) / 2;
-        const startY = 115;
+    _drawVersusStrip(ctx) {
+        const y = 112;
+        const pChar = this.playerIndex >= 0 ? CHAR_IDS[this.playerIndex] : null;
+        const oChar = this.step === 'opponent' ? CHAR_IDS[this.selectedIndex] : null;
+        this._drawPickSlot(ctx, 220, y, '1P', pChar, '#ff6b8a');
+        this._drawPickSlot(ctx, 880, y, 'CPU', oChar, '#66ccff');
+
+        ctx.save();
+        ctx.font = `bold 46px ${FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.fillText('VS', 640, y + 56);
+        ctx.restore();
+    },
+
+    _drawPickSlot(ctx, x, y, label, charId, color) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.38)';
+        this._roundRect(ctx, x, y, 180, 108, 8);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.font = `bold 18px ${FONT_FAMILY}`;
+        ctx.fillStyle = color;
+        ctx.fillText(label, x + 16, y + 26);
+
+        if (charId) {
+            this._drawSquarePortrait(ctx, charId, x + 100, y + 16, 76, 76);
+            ctx.font = `bold 18px ${FONT_FAMILY}`;
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(CHARACTER_DEFINITIONS[charId].displayName, x + 16, y + 70);
+        } else {
+            ctx.font = `bold 34px ${FONT_FAMILY}`;
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fillText('?', x + 86, y + 72);
+        }
+        ctx.restore();
+    },
+
+    _drawAvatarGrid(ctx) {
+        const size = 138;
+        const gap = 22;
+        const startX = 86;
+        const startY = 278;
 
         for (let i = 0; i < CHAR_IDS.length; i++) {
             const charId = CHAR_IDS[i];
-            const charDef = CHARACTER_DEFINITIONS[charId];
-            if (!charDef) continue;
+            const def = CHARACTER_DEFINITIONS[charId];
             const col = i % 2;
             const row = Math.floor(i / 2);
-            const px = startX + col * (panelW + gapX);
-            const py = startY + row * (panelH + gapY);
-            this._drawCharPanel(ctx, px, py, panelW, panelH, charId, charDef.selectName, this.selectedIndex === i, charDef.selectAccentColor, i + 1);
-        }
+            const x = startX + col * (size + gap);
+            const y = startY + row * (size + gap);
+            const selected = i === this.selectedIndex;
+            const locked = i === this.playerIndex;
 
-        // Instructions
-        ctx.save();
-        ctx.font = `16px ${FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('点击角色选择 → 然后点击模式按钮  |  1-4: 选择角色  |  Enter: PvP  |  5: PvE', W / 2, H - 100);
-        ctx.restore();
-
-        // Mode buttons if selected
-        if (this.selectedIndex >= 0) {
             ctx.save();
-            const btnW = 200, btnH = 50;
-            const btnY = H - 80;
-
-            // PvP button
-            const pvpX = W / 2 - btnW - 15;
-            ctx.shadowColor = '#ff6b9d';
-            ctx.shadowBlur = 15;
-            const pvpGrad = ctx.createLinearGradient(pvpX, btnY, pvpX + btnW, btnY + btnH);
-            pvpGrad.addColorStop(0, '#ff4466');
-            pvpGrad.addColorStop(1, '#ff6b9d');
-            ctx.fillStyle = pvpGrad;
-            this._roundRect(ctx, pvpX, btnY, btnW, btnH, 10);
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            this._roundRect(ctx, x, y, size, size, 8);
             ctx.fill();
+            ctx.strokeStyle = selected ? def.selectAccentColor : (locked ? '#ffffff' : 'rgba(255,255,255,0.18)');
+            ctx.lineWidth = selected ? 4 : 2;
+            ctx.shadowColor = selected ? def.selectAccentColor : 'transparent';
+            ctx.shadowBlur = selected ? 18 : 0;
+            ctx.stroke();
             ctx.shadowBlur = 0;
-            ctx.font = `bold 22px ${FONT_FAMILY}`;
+
+            this._drawSquarePortrait(ctx, charId, x + 10, y + 10, size - 20, size - 38);
+            ctx.font = `bold 15px ${FONT_FAMILY}`;
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('PvP 对战', pvpX + btnW / 2, btnY + btnH / 2);
-
-            // PvE button
-            const pveX = W / 2 + 15;
-            ctx.shadowColor = '#66ccff';
-            ctx.shadowBlur = 15;
-            const pveGrad = ctx.createLinearGradient(pveX, btnY, pveX + btnW, btnY + btnH);
-            pveGrad.addColorStop(0, '#3366ff');
-            pveGrad.addColorStop(1, '#66aaff');
-            ctx.fillStyle = pveGrad;
-            this._roundRect(ctx, pveX, btnY, btnW, btnH, 10);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.font = `bold 22px ${FONT_FAMILY}`;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('PvE 过关', pveX + btnW / 2, btnY + btnH / 2);
-
+            ctx.fillStyle = selected ? '#ffffff' : 'rgba(255,255,255,0.72)';
+            ctx.fillText(`${i + 1}. ${def.displayName}`, x + size / 2, y + size - 13);
             ctx.restore();
         }
+    },
+
+    _drawSkillPanel(ctx, charId, def) {
+        const x = 445, y = 245, w = 735, h = 390;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.32)';
+        this._roundRect(ctx, x, y, w, h, 8);
+        ctx.fill();
+        ctx.strokeStyle = `${def.selectAccentColor}88`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.font = `bold 32px ${FONT_FAMILY}`;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = def.selectAccentColor;
+        ctx.fillText(def.selectName, x + 28, y + 48);
+
+        ctx.font = `bold 18px ${FONT_FAMILY}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.fillText(`HP ${def.maxHp}`, x + 30, y + 82);
+
+        const icons = Assets.skillIcons[charId] || [];
+        for (let i = 0; i < def.skills.length; i++) {
+            const skill = def.skills[i];
+            const rowY = y + 118 + i * 62;
+            const icon = icons[i];
+            const color = def.skillColors[i];
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x + 52, rowY + 24, 23, 0, Math.PI * 2);
+            ctx.clip();
+            if (icon) ctx.drawImage(icon, x + 29, rowY + 1, 46, 46);
+            else {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + 29, rowY + 1, 46, 46);
+            }
+            ctx.restore();
+
+            ctx.font = `bold 17px ${FONT_FAMILY}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`${i + 1}. ${skill.name}`, x + 88, rowY + 18);
+            ctx.font = `14px ${FONT_FAMILY}`;
+            ctx.fillStyle = 'rgba(255,255,255,0.56)';
+            ctx.fillText(`${this._typeLabel(skill.type)}  CD ${skill.maxCooldown}s`, x + 88, rowY + 39);
+            ctx.fillStyle = 'rgba(255,255,255,0.76)';
+            ctx.fillText(skill.description, x + 255, rowY + 30);
+        }
+        ctx.restore();
+    },
+
+    _drawFooter(ctx, W, H) {
+        ctx.save();
+        ctx.font = `15px ${FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText('1-4/方向键选择  Enter确认  5进入PvE', W / 2, H - 30);
+        ctx.restore();
+
+        const pve = this._pveButtonRect();
+        this._drawButton(ctx, pve, 'PvE 过关', '#5ba7ff');
+        if (this.step === 'opponent') {
+            this._drawButton(ctx, this._backButtonRect(), '重选己方', '#ffffff');
+        }
+    },
+
+    _drawButton(ctx, rect, label, color) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.34)';
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.font = `bold 16px ${FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color;
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2);
+        ctx.restore();
+    },
+
+    _drawSquarePortrait(ctx, charId, x, y, size, h = size) {
+        const portrait = Assets.portraits[charId] && Assets.portraits[charId].normal;
+        if (!portrait) {
+            ctx.fillStyle = CHARACTER_DEFINITIONS[charId].selectAccentColor;
+            ctx.fillRect(x, y, size, h);
+            return;
+        }
+
+        const srcSize = Math.min(portrait.width, portrait.height);
+        const sx = Math.max(0, (portrait.width - srcSize) / 2);
+        const sy = Math.max(0, (portrait.height - srcSize) * 0.18);
+        ctx.drawImage(portrait, sx, sy, srcSize, srcSize, x, y, size, h);
+    },
+
+    _hitAvatar(mx, my) {
+        const size = 138;
+        const gap = 22;
+        const startX = 86;
+        const startY = 278;
+        for (let i = 0; i < CHAR_IDS.length; i++) {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const x = startX + col * (size + gap);
+            const y = startY + row * (size + gap);
+            if (mx >= x && mx <= x + size && my >= y && my <= y + size) return i;
+        }
+        return -1;
+    },
+
+    _typeLabel(type) {
+        if (type === 'damage') return '伤害';
+        if (type === 'shield') return '防护';
+        return '功能';
+    },
+
+    _pveButtonRect() {
+        return { x: 945, y: 650, w: 120, h: 42 };
+    },
+
+    _backButtonRect() {
+        return { x: 1080, y: 650, w: 120, h: 42 };
     },
 
     _roundRect(ctx, x, y, w, h, r) {
@@ -218,81 +351,5 @@ export const SelectScene = {
         ctx.lineTo(x, y + r);
         ctx.quadraticCurveTo(x, y, x + r, y);
         ctx.closePath();
-    },
-
-    _drawCharPanel(ctx, x, y, w, h, charName, displayName, selected, accentColor, keyNum) {
-        ctx.save();
-
-        // Panel background
-        const panelGrad = ctx.createLinearGradient(x, y, x, y + h);
-        panelGrad.addColorStop(0, 'rgba(30, 20, 50, 0.8)');
-        panelGrad.addColorStop(1, 'rgba(20, 15, 40, 0.9)');
-        ctx.fillStyle = panelGrad;
-        this._roundRect(ctx, x, y, w, h, 12);
-        ctx.fill();
-
-        // Selection glow border
-        if (selected) {
-            ctx.strokeStyle = accentColor;
-            ctx.lineWidth = 4;
-            ctx.shadowColor = accentColor;
-            ctx.shadowBlur = 25;
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-        } else {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-
-        // Portrait (left side of panel)
-        const portrait = Assets.portraits[charName] && Assets.portraits[charName].normal;
-        if (portrait) {
-            const portraitArea = h - 20;
-            const scale = portraitArea / Math.max(portrait.height, 1);
-            const pw = portrait.width * scale;
-            const ph = portraitArea;
-            const px = x + 15;
-            const py = y + 10;
-
-            ctx.save();
-            if (!selected) ctx.globalAlpha = 0.7;
-            // Clip to rounded rect
-            ctx.beginPath();
-            ctx.rect(px, py, pw, ph);
-            ctx.clip();
-            ctx.drawImage(portrait, px, py, pw, ph);
-            ctx.restore();
-        } else {
-            // Color placeholder
-            ctx.fillStyle = accentColor;
-            ctx.globalAlpha = 0.3;
-            ctx.fillRect(x + 15, y + 10, 100, h - 20);
-            ctx.globalAlpha = 1;
-        }
-
-        // Name (right side)
-        ctx.font = `bold 24px ${FONT_FAMILY}`;
-        ctx.textAlign = 'left';
-        ctx.fillStyle = selected ? accentColor : 'rgba(255, 255, 255, 0.7)';
-        ctx.fillText(displayName, x + 160, y + 50);
-
-        // Skills preview
-        const charDef = CHARACTER_DEFINITIONS[charName];
-        if (charDef) {
-            ctx.font = `14px ${FONT_FAMILY}`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-            charDef.skills.forEach((skill, i) => {
-                ctx.fillText(`[${i + 1}] ${skill.name}  CD: ${skill.maxCooldown}s`, x + 160, y + 80 + i * 22);
-            });
-        }
-
-        // Key hint
-        ctx.font = `14px ${FONT_FAMILY}`;
-        ctx.textAlign = 'right';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillText(`按 ${keyNum} 选择`, x + w - 15, y + h - 12);
-
-        ctx.restore();
     }
 };

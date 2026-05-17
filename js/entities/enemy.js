@@ -2,7 +2,7 @@
  * Enemy - PvE mode enemy entity with pixel art rendering and simple AI
  * Types: slime (ground walker), bat (flyer), skeleton (tank), boss
  */
-import { MAX_HP, SCREEN_HEIGHT } from '../config/game-config.js';
+import { SCREEN_HEIGHT } from '../config/game-config.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { emitHitImpact } from '../core/battle-events.js';
 import { rectsOverlap } from '../systems/collision.js';
@@ -257,6 +257,9 @@ export class Enemy {
         this.isOnGround = true;
         this.hitFlash = 0;
         this._atkHit = false;
+        this.stunTimer = 0;
+        this.slowTimer = 0;
+        this.slowMultiplier = 1;
 
         // AI
         this.aiTimer = 0;
@@ -363,6 +366,29 @@ export class Enemy {
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.specialCooldown > 0) this.specialCooldown -= dt;
 
+        if (this.slowTimer > 0) {
+            this.slowTimer -= dt;
+            if (this.slowTimer <= 0) {
+                this.slowTimer = 0;
+                this.slowMultiplier = 1;
+            }
+        } else {
+            this.slowMultiplier = 1;
+        }
+
+        if (this.stunTimer > 0) {
+            this.stunTimer -= dt;
+            if (this.stunTimer < 0) this.stunTimer = 0;
+            if (this.state === 'walk' || this.state === 'attack') {
+                this.state = 'idle';
+                this._atkHit = false;
+            }
+            if (this.type === 'boss') {
+                this._updateBossProjectiles(dt, playerCx, playerCy);
+            }
+            return;
+        }
+
         // Face toward player
         if (playerCx > this.cx) {
             this.facing = 'right';
@@ -423,11 +449,11 @@ export class Enemy {
         if (dist < this.aggroRange) {
             // Chase player
             const dir = playerCx > this.cx ? 1 : -1;
-            this.cx += dir * this.speed;
+            this.cx += dir * this.speed * this.slowMultiplier;
             this.state = 'walk';
         } else {
             // Patrol
-            this.cx += this.aiDir * this.speed * 0.5;
+            this.cx += this.aiDir * this.speed * 0.5 * this.slowMultiplier;
             if (this.cx <= this.patrolLeft) this.aiDir = 1;
             if (this.cx >= this.patrolRight) this.aiDir = -1;
             this.state = 'walk';
@@ -446,11 +472,11 @@ export class Enemy {
         if (dist < this.aggroRange) {
             // Chase player — faster than slime
             const dir = playerCx > this.cx ? 1 : -1;
-            this.cx += dir * this.speed;
+            this.cx += dir * this.speed * this.slowMultiplier;
             this.state = 'walk';
         } else {
             // Patrol — wider range
-            this.cx += this.aiDir * this.speed * 0.6;
+            this.cx += this.aiDir * this.speed * 0.6 * this.slowMultiplier;
             if (this.cx <= this.patrolLeft) this.aiDir = 1;
             if (this.cx >= this.patrolRight) this.aiDir = -1;
             this.state = 'walk';
@@ -472,14 +498,14 @@ export class Enemy {
 
         if (dist < this.aggroRange) {
             const dir = playerCx > this.cx ? 1 : -1;
-            this.cx += dir * this.speed;
+            this.cx += dir * this.speed * this.slowMultiplier;
             // Also adjust height toward player
             const targetY = playerCy - 40;
-            this.floatBaseY += (targetY - this.floatBaseY) * 0.02;
+            this.floatBaseY += (targetY - this.floatBaseY) * 0.02 * this.slowMultiplier;
             this.state = 'walk';
         } else {
             // Circle patrol
-            this.cx += this.aiDir * this.speed * 0.4;
+            this.cx += this.aiDir * this.speed * 0.4 * this.slowMultiplier;
             if (this.cx <= this.patrolLeft) this.aiDir = 1;
             if (this.cx >= this.patrolRight) this.aiDir = -1;
             this.state = 'walk';
@@ -497,11 +523,11 @@ export class Enemy {
 
         if (dist < this.aggroRange) {
             const dir = playerCx > this.cx ? 1 : -1;
-            this.cx += dir * this.speed;
+            this.cx += dir * this.speed * this.slowMultiplier;
             this.state = 'walk';
         } else {
             // Patrol
-            this.cx += this.aiDir * this.speed * 0.3;
+            this.cx += this.aiDir * this.speed * 0.3 * this.slowMultiplier;
             if (this.cx <= this.patrolLeft) this.aiDir = 1;
             if (this.cx >= this.patrolRight) this.aiDir = -1;
             this.state = 'walk';
@@ -544,7 +570,7 @@ export class Enemy {
 
         const dir = playerCx > this.cx ? 1 : -1;
         const moveSpeed = this.phaseTwo ? this.speed * 1.5 : this.speed;
-        this.cx += dir * moveSpeed;
+        this.cx += dir * moveSpeed * this.slowMultiplier;
         this.state = 'walk';
     }
 

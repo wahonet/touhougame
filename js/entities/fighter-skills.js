@@ -47,10 +47,10 @@ export function activateSkill(fighter, index, opponent) {
         }
     } else if (fighter.name === 'youmu') {
         switch (index) {
-            case 0: _activateYoumuRoukanken(fighter, skill, opponent); break;
-            case 1: _activateYoumuHakuroukenSlash(fighter, skill); break;
-            case 2: _activateYoumuHalfSpiritDash(fighter, skill); break;
-            case 3: _activateYoumuSlashOfPresentWorld(fighter, skill); break;
+            case 0: _activateYoumuSpiritSlash(fighter, skill); break;
+            case 1: _activateYoumuGhostBlade(fighter, skill); break;
+            case 2: _activateYoumuHalfSpiritShield(fighter, skill); break;
+            case 3: _activateYoumuGhostStep(fighter, skill); break;
         }
     }
 }
@@ -117,8 +117,12 @@ function _activateReimuFlight(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
     fighter.flying.active = true;
     fighter.flying.timer = 0;
-    // Cancel any downward velocity
-    if (fighter.velocityY > 0) fighter.velocityY = 0;
+    fighter.state = 'idle';
+    fighter._atkHit = false;
+    fighter.velocityX = 0;
+    fighter.velocityY = 0;
+    fighter.isOnGround = false;
+    fighter._currentPlatform = null;
     skill.data = { done: false };
 }
 
@@ -249,8 +253,6 @@ function _activateYuyukoCherryBlossomStorm(fighter, skill) {
         radius: 120,
         duration: 3,
         timer: 0,
-        tickInterval: 0.3,
-        tickTimer: 0,
         petals: []
     };
     // Spawn initial petals
@@ -267,63 +269,67 @@ function _activateYuyukoCherryBlossomStorm(fighter, skill) {
 
 // ---- YOUMU SKILLS ----
 
-/** Skill 0: 楼观剑 - Wide sword slash, 90x70 hitbox, 50 dmg */
-function _activateYoumuRoukanken(fighter, skill, opponent) {
+/** Skill 0: 半灵追斩 - homing spirit slash, 90 dmg */
+function _activateYoumuSpiritSlash(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
     const dir = fighter.facing === 'right' ? 1 : -1;
     skill.data = {
-        slashX: fighter.cx + dir * (fighter.hurtboxW / 2 + 10),
-        slashY: fighter.cy - fighter.hurtboxH / 2,
-        width: 90,
-        height: 70,
-        dir: dir,
-        duration: 0.3,
-        timer: 0,
-        hitTarget: false,
-        slashArc: 0
+        spirit: {
+            x: fighter.cx + dir * 35,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            vx: dir * 7,
+            vy: 0,
+            active: true,
+            frame: 0,
+            hit: false
+        },
+        hitEffects: []
     };
 }
 
-/** Skill 1: 白楼剑斩 - Dash forward speed 14, 80 dmg, invulnerable, 0.5s */
-function _activateYoumuHakuroukenSlash(fighter, skill) {
+/** Skill 1: 幽魂回刃 - returning ghost blade, 120 dmg */
+function _activateYoumuGhostBlade(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
     const dir = fighter.facing === 'right' ? 1 : -1;
-    fighter.velocityX = dir * 14;
-    fighter.velocityY = 0;
-    fighter.invincible = true;
     skill.data = {
-        dir: dir,
-        duration: 0.5,
-        timer: 0,
-        hitTarget: false,
+        blade: {
+            x: fighter.cx + dir * 36,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            startX: fighter.cx,
+            dir,
+            phase: 'out',
+            frame: 0,
+            active: true
+        },
+        hitTargets: [],
         trailParticles: []
     };
 }
 
-/** Skill 2: 半灵冲刺 - Quick dash speed 16, no damage, invulnerable, 0.3s */
-function _activateYoumuHalfSpiritDash(fighter, skill) {
-    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
-    const dir = fighter.facing === 'right' ? 1 : -1;
-    fighter.velocityX = dir * 16;
-    fighter.velocityY = 0;
-    fighter.invincible = true;
-    skill.data = {
-        dir: dir,
-        duration: 0.3,
+/** Skill 2: 半灵护佑 - shield 260 HP, 8s */
+function _activateYoumuHalfSpiritShield(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 260,
+        maxHp: 260,
+        duration: 8,
         timer: 0,
-        trailParticles: []
+        flashTimer: 0,
+        shatterTimer: 0
     };
+    skill.data = { done: false };
 }
 
-/** Skill 3: 现世斩 - Powerful beam, 120 dmg, 1s */
-function _activateYoumuSlashOfPresentWorld(fighter, skill) {
-    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_laser');
+/** Skill 3: 幽体步 - invulnerable ghost dash, no damage */
+function _activateYoumuGhostStep(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    fighter.invincible = true;
     skill.data = {
-        phase: 'charge',
-        chargeTimer: 0,
-        fireTimer: 0,
-        damageTicks: [false, false, false],
-        beamDir: fighter.facing === 'right' ? 1 : -1
+        dir,
+        timer: 0,
+        duration: 0.45,
+        trailParticles: []
     };
 }
 
@@ -386,10 +392,10 @@ export function updateSkillByIndex(fighter, index, dt, opponent) {
         }
     } else if (fighter.name === 'youmu') {
         switch (index) {
-            case 0: _updateYoumuRoukanken(fighter, skill, dt, opponent); break;
-            case 1: _updateYoumuHakuroukenSlash(fighter, skill, dt, opponent); break;
-            case 2: _updateYoumuHalfSpiritDash(fighter, skill, dt); break;
-            case 3: _updateYoumuSlashOfPresentWorld(fighter, skill, dt, opponent); break;
+            case 0: _updateYoumuSpiritSlash(fighter, skill, dt, opponent); break;
+            case 1: _updateYoumuGhostBlade(fighter, skill, dt, opponent); break;
+            case 2: _updateYoumuHalfSpiritShield(fighter, skill, dt); break;
+            case 3: _updateYoumuGhostStep(fighter, skill, dt); break;
         }
     }
 }
@@ -610,7 +616,9 @@ function _updateMarisaStarStorm(fighter, skill, dt, opponent) {
             if (star.x > hurtbox.x && star.x < hurtbox.x + hurtbox.w &&
                 star.y > hurtbox.y && star.y < hurtbox.y + hurtbox.h) {
                 star.hitTargets.push(opponent);
-                opponent.damage(20);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 3);
+                emitHitImpact({ x: star.x, y: star.y, color: '#ffdd44', shake: 4, maxShake: 8 });
+                star.active = false;
             }
         }
 
@@ -762,15 +770,13 @@ function _updateYuyukoSpiritGuide(fighter, skill, dt) {
 function _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent) {
     const data = skill.data;
     data.timer += dt;
-    data.tickTimer += dt;
 
     // Center follows fighter loosely
     data.cx = fighter.cx;
     data.cy = fighter.cy - fighter.hurtboxH / 2;
 
-    // Damage tick
-    if (data.tickTimer >= data.tickInterval && opponent.state !== 'dead') {
-        data.tickTimer = 0;
+    // Functional field: slow targets inside the petals, no damage.
+    if (opponent.state !== 'dead') {
         const hurtbox = opponent.getHurtbox();
         const ocx = hurtbox.x + hurtbox.w / 2;
         const ocy = hurtbox.y + hurtbox.h / 2;
@@ -778,8 +784,8 @@ function _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent) {
         const dy = ocy - data.cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < data.radius) {
-            opponent.damage(8);
-            emitHitImpact({ x: ocx, y: ocy, color: '#ffaadd' });
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.25);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.45);
         }
     }
 
@@ -798,95 +804,142 @@ function _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent) {
 // ---- YOUMU SKILL UPDATES ----
 
 /** Update Youmu roukanken (sword slash) */
-function _updateYoumuRoukanken(fighter, skill, dt, opponent) {
+function _updateYoumuSpiritSlash(fighter, skill, dt, opponent) {
     const data = skill.data;
-    data.timer += dt;
-    data.slashArc = Math.min(1, data.timer / data.duration);
+    const spirit = data.spirit;
+    if (!spirit || !spirit.active) {
+        if (!data.hitEffects || data.hitEffects.length === 0) {
+            skill.active = false;
+            skill.data = {};
+        }
+        return;
+    }
 
-    if (!data.hitTarget && opponent.state !== 'dead') {
-        const slashRect = {
-            x: data.dir === 1 ? data.slashX : data.slashX - data.width,
-            y: data.slashY - data.height / 2,
-            w: data.width,
-            h: data.height
-        };
+    spirit.frame++;
+
+    if (opponent.state !== 'dead') {
         const hurtbox = opponent.getHurtbox();
-        if (rectsOverlap(slashRect, hurtbox)) {
-            data.hitTarget = true;
-            opponent.damage(50);
-            emitHitImpact({
-                x: data.dir === 1 ? slashRect.x + slashRect.w : slashRect.x,
-                y: slashRect.y + slashRect.h / 2,
-                color: '#44ddaa'
-            });
+        const targetX = hurtbox.x + hurtbox.w / 2;
+        const targetY = hurtbox.y + hurtbox.h / 2;
+        const dx = targetX - spirit.x;
+        const dy = targetY - spirit.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        spirit.vx = spirit.vx * 0.85 + (dx / dist) * 2.2;
+        spirit.vy = spirit.vy * 0.85 + (dy / dist) * 2.2;
+        const speed = Math.sqrt(spirit.vx * spirit.vx + spirit.vy * spirit.vy) || 1;
+        const maxSpeed = 9;
+        if (speed > maxSpeed) {
+            spirit.vx = spirit.vx / speed * maxSpeed;
+            spirit.vy = spirit.vy / speed * maxSpeed;
         }
     }
 
-    if (data.timer >= data.duration) {
+    spirit.x += spirit.vx;
+    spirit.y += spirit.vy;
+
+    if (!spirit.hit && opponent.state !== 'dead') {
+        const hurtbox = opponent.getHurtbox();
+        if (spirit.x > hurtbox.x && spirit.x < hurtbox.x + hurtbox.w &&
+            spirit.y > hurtbox.y && spirit.y < hurtbox.y + hurtbox.h) {
+            spirit.hit = true;
+            spirit.active = false;
+            opponent.damage(90);
+            emitHitImpact({ x: spirit.x, y: spirit.y, color: '#88eebb', shake: 10, maxShake: 14 });
+            data.hitEffects.push({ x: spirit.x, y: spirit.y, timer: 24 });
+        }
+    }
+
+    const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+    if (spirit.frame > 120 || spirit.x < -80 || spirit.x > boundX + 80 || spirit.y < -80 || spirit.y > SCREEN_HEIGHT + 80) {
+        spirit.active = false;
+    }
+
+    for (let i = data.hitEffects.length - 1; i >= 0; i--) {
+        data.hitEffects[i].timer--;
+        if (data.hitEffects[i].timer <= 0) data.hitEffects.splice(i, 1);
+    }
+
+    if (!spirit.active && data.hitEffects.length === 0) {
         skill.active = false;
         skill.data = {};
     }
 }
 
 /** Update Youmu hakurouken slash (dash + damage) */
-function _updateYoumuHakuroukenSlash(fighter, skill, dt, opponent) {
+function _updateYoumuGhostBlade(fighter, skill, dt, opponent) {
     const data = skill.data;
-    data.timer += dt;
+    const blade = data.blade;
+    if (!blade || !blade.active) {
+        skill.active = false;
+        skill.data = {};
+        return;
+    }
 
-    // Add trail particle
+    blade.frame++;
+    blade.x += blade.dir * (blade.phase === 'out' ? 11 : -13);
+    blade.y += Math.sin(blade.frame * 0.18) * 1.5;
+
     data.trailParticles.push({
-        x: fighter.cx,
-        y: fighter.cy - fighter.hurtboxH / 2,
-        alpha: 0.8,
-        size: 15 + Math.random() * 10
+        x: blade.x,
+        y: blade.y,
+        alpha: 0.65,
+        size: 10 + Math.random() * 8
     });
 
-    // Hit check during dash
-    if (!data.hitTarget && opponent.state !== 'dead') {
+    if (blade.phase === 'out' && Math.abs(blade.x - blade.startX) > 360) {
+        blade.phase = 'back';
+    }
+
+    if (opponent.state !== 'dead' && !data.hitTargets.includes(opponent)) {
         const hurtbox = opponent.getHurtbox();
-        const dashRect = fighter.getHurtbox();
-        if (rectsOverlap(dashRect, hurtbox)) {
-            data.hitTarget = true;
-            opponent.damage(80);
-            emitHitImpact({
-                x: (dashRect.x + dashRect.w / 2 + hurtbox.x + hurtbox.w / 2) / 2,
-                y: (dashRect.y + dashRect.h / 2 + hurtbox.y + hurtbox.h / 2) / 2,
-                color: '#88ccff'
-            });
+        const bladeRect = { x: blade.x - 28, y: blade.y - 28, w: 56, h: 56 };
+        if (rectsOverlap(bladeRect, hurtbox)) {
+            data.hitTargets.push(opponent);
+            opponent.damage(120);
+            emitHitImpact({ x: blade.x, y: blade.y, color: '#88ccff', shake: 12, maxShake: 16 });
         }
     }
 
-    // Fade trail particles
     for (let i = data.trailParticles.length - 1; i >= 0; i--) {
-        data.trailParticles[i].alpha -= dt * 3;
+        data.trailParticles[i].alpha -= dt * 3.5;
         if (data.trailParticles[i].alpha <= 0) {
             data.trailParticles.splice(i, 1);
         }
     }
 
-    if (data.timer >= data.duration) {
-        fighter.invincible = false;
-        if (data.trailParticles.length === 0) {
-            skill.active = false;
-            skill.data = {};
-        }
+    if (blade.phase === 'back' && Math.abs(blade.x - fighter.cx) < 35) {
+        blade.active = false;
+    }
+
+    if ((!blade.active || blade.frame > 150) && data.trailParticles.length === 0) {
+        skill.active = false;
+        skill.data = {};
     }
 }
 
 /** Update Youmu half-spirit dash (mobility) */
-function _updateYoumuHalfSpiritDash(fighter, skill, dt) {
+function _updateYoumuHalfSpiritShield(fighter, skill, dt) {
+    if (!fighter.shield) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+/** Update Youmu slash of present world (beam) */
+function _updateYoumuGhostStep(fighter, skill, dt) {
     const data = skill.data;
     data.timer += dt;
 
-    // Add trail particle
+    fighter.cx += data.dir * 13;
+    fighter.invincible = data.timer < data.duration;
+
     data.trailParticles.push({
         x: fighter.cx,
         y: fighter.cy - fighter.hurtboxH / 2,
-        alpha: 0.6,
-        size: 12 + Math.random() * 8
+        alpha: 0.65,
+        size: 18 + Math.random() * 10
     });
 
-    // Fade trail particles
     for (let i = data.trailParticles.length - 1; i >= 0; i--) {
         data.trailParticles[i].alpha -= dt * 4;
         if (data.trailParticles[i].alpha <= 0) {
@@ -894,48 +947,10 @@ function _updateYoumuHalfSpiritDash(fighter, skill, dt) {
         }
     }
 
-    if (data.timer >= data.duration) {
-        fighter.invincible = false;
-        if (data.trailParticles.length === 0) {
-            skill.active = false;
-            skill.data = {};
-        }
-    }
-}
-
-/** Update Youmu slash of present world (beam) */
-function _updateYoumuSlashOfPresentWorld(fighter, skill, dt, opponent) {
-    const data = skill.data;
-
-    if (data.phase === 'charge') {
-        data.chargeTimer += dt;
-        if (data.chargeTimer >= 0.4) {
-            data.phase = 'fire';
-            data.fireTimer = 0;
-            data.beamDir = fighter.facing === 'right' ? 1 : -1;
-        }
-    } else if (data.phase === 'fire') {
-        data.fireTimer += dt;
-
-        const tickTimes = [0, 0.33, 0.66];
-        for (let i = 0; i < 3; i++) {
-            if (!data.damageTicks[i] && data.fireTimer >= tickTimes[i]) {
-                data.damageTicks[i] = true;
-                const beamRect = calcBeamRect(fighter, data.beamDir, 48, 800);
-                if (beamRect && opponent.state !== 'dead') {
-                    const hurtbox = opponent.getHurtbox();
-                    if (rectsOverlap(beamRect, hurtbox)) {
-                        opponent.damage(40);
-                    }
-                }
-            }
-        }
-
-        if (data.fireTimer >= 1.0) {
-            data.phase = 'done';
-            skill.active = false;
-            skill.data = {};
-        }
+    if (data.timer >= data.duration) fighter.invincible = false;
+    if (data.timer >= data.duration && data.trailParticles.length === 0) {
+        skill.active = false;
+        skill.data = {};
     }
 }
 
@@ -964,9 +979,9 @@ export function drawSkill(fighter, ctx) {
             }
         } else if (fighter.name === 'youmu') {
             switch (i) {
-                case 0: _drawYoumuRoukanken(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawYoumuHakuroukenSlash(fighter, ctx, fighter.skills[i].data); break;
-                case 3: _drawYoumuSlashOfPresentWorld(fighter, ctx, fighter.skills[i].data); break;
+                case 0: _drawYoumuSpiritSlash(fighter, ctx, fighter.skills[i].data); break;
+                case 1: _drawYoumuGhostBlade(fighter, ctx, fighter.skills[i].data); break;
+                case 3: _drawYoumuGhostStep(fighter, ctx, fighter.skills[i].data); break;
             }
         }
     }
@@ -1111,13 +1126,7 @@ function _drawMarisaLaser(fighter, ctx, data) {
         const dir = data.beamDir;
         const beamSprite = Assets.effects.laserBeam;
         if (beamSprite) {
-            const tileW = beamSprite.width || 96;
-            for (let bx = beamRect.x; bx < beamRect.x + beamRect.w; bx += tileW) {
-                const drawW = Math.min(tileW, beamRect.x + beamRect.w - bx);
-                if (drawW > 0) {
-                    ctx.drawImage(beamSprite, bx, beamRect.y, drawW, beamRect.h);
-                }
-            }
+            ctx.drawImage(beamSprite, beamRect.x, beamRect.y - 6, beamRect.w, beamRect.h + 12);
         } else {
             ctx.save();
             ctx.fillStyle = 'rgba(255, 255, 100, 0.8)';
@@ -1143,9 +1152,13 @@ function _drawMarisaLaser(fighter, ctx, data) {
 
         // Beam glow overlay
         ctx.save();
-        ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.02) * 0.1;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(beamRect.x, beamRect.y + 10, beamRect.w, beamRect.h - 20);
+        const pulse = 0.35 + Math.sin(Date.now() * 0.02) * 0.08;
+        const glow = ctx.createLinearGradient(0, beamRect.y, 0, beamRect.y + beamRect.h);
+        glow.addColorStop(0, 'rgba(255,255,255,0)');
+        glow.addColorStop(0.5, `rgba(255,255,255,${pulse})`);
+        glow.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(beamRect.x, beamRect.y - 4, beamRect.w, beamRect.h + 8);
         ctx.restore();
     }
 }
@@ -1180,13 +1193,7 @@ function _drawMarisaBigLaser(fighter, ctx, data) {
         const dir = data.beamDir;
         const beamSprite = Assets.effects.bigLaserBeam;
         if (beamSprite) {
-            const tileW = beamSprite.width || 128;
-            for (let bx = beamRect.x; bx < beamRect.x + beamRect.w; bx += tileW) {
-                const drawW = Math.min(tileW, beamRect.x + beamRect.w - bx);
-                if (drawW > 0) {
-                    ctx.drawImage(beamSprite, bx, beamRect.y, drawW, beamRect.h);
-                }
-            }
+            ctx.drawImage(beamSprite, beamRect.x, beamRect.y - 10, beamRect.w, beamRect.h + 20);
         } else {
             ctx.save();
             ctx.fillStyle = 'rgba(255, 220, 50, 0.9)';
@@ -1212,9 +1219,13 @@ function _drawMarisaBigLaser(fighter, ctx, data) {
 
         // Extra dramatic glow
         ctx.save();
-        ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.03) * 0.15;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(beamRect.x, beamRect.y + 16, beamRect.w, beamRect.h - 32);
+        const pulse = 0.42 + Math.sin(Date.now() * 0.03) * 0.12;
+        const glow = ctx.createLinearGradient(0, beamRect.y, 0, beamRect.y + beamRect.h);
+        glow.addColorStop(0, 'rgba(255,255,255,0)');
+        glow.addColorStop(0.5, `rgba(255,255,255,${pulse})`);
+        glow.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(beamRect.x, beamRect.y - 8, beamRect.w, beamRect.h + 16);
         ctx.restore();
 
         // Outer glow
@@ -1374,41 +1385,46 @@ function _drawYuyukoCherryBlossomStorm(fighter, ctx, data) {
 
 // ---- YOUMU DRAW ----
 
-function _drawYoumuRoukanken(fighter, ctx, data) {
-    const progress = data.slashArc;
-    const dir = data.dir;
-    const cx = data.slashX;
-    const cy = data.slashY;
+function _drawYoumuSpiritSlash(fighter, ctx, data) {
+    const spirit = data.spirit;
+    if (spirit && spirit.active) {
+        const sprite = Assets.effects.youmuSpiritSlash;
+        const size = 54 + Math.sin(spirit.frame * 0.2) * 6;
+        if (sprite) {
+            ctx.save();
+            ctx.translate(spirit.x, spirit.y);
+            ctx.rotate(Math.atan2(spirit.vy, spirit.vx));
+            ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+            ctx.restore();
+        } else {
+            ctx.save();
+            ctx.strokeStyle = '#88eebb';
+            ctx.shadowColor = '#88eebb';
+            ctx.shadowBlur = 18;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(spirit.x, spirit.y, size / 2, -0.9, 0.9);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
 
-    ctx.save();
-    ctx.globalAlpha = 1 - progress * 0.5;
-
-    // Sword slash arc
-    const arcStart = dir === 1 ? -Math.PI / 3 : Math.PI + Math.PI / 3;
-    const arcEnd = arcStart + dir * (Math.PI * 0.8 * progress);
-
-    ctx.strokeStyle = '#44ddaa';
-    ctx.shadowColor = '#44ddaa';
-    ctx.shadowBlur = 15 + progress * 10;
-    ctx.lineWidth = 6 - progress * 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 50, arcStart, arcEnd);
-    ctx.stroke();
-
-    // Inner bright slash
-    ctx.strokeStyle = '#aaffcc';
-    ctx.shadowColor = '#aaffcc';
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 50, arcStart, arcEnd);
-    ctx.stroke();
-
-    ctx.restore();
+    for (const effect of data.hitEffects || []) {
+        const alpha = Math.max(0, effect.timer / 24);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#aaffcc';
+        ctx.shadowColor = '#aaffcc';
+        ctx.shadowBlur = 20;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, 50 * (1 - alpha) + 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
-function _drawYoumuHakuroukenSlash(fighter, ctx, data) {
-    // Trail particles
+function _drawYoumuGhostBlade(fighter, ctx, data) {
     for (const particle of data.trailParticles) {
         ctx.save();
         ctx.globalAlpha = particle.alpha;
@@ -1421,66 +1437,49 @@ function _drawYoumuHakuroukenSlash(fighter, ctx, data) {
         ctx.restore();
     }
 
-    // Sword slash effect at front of dash
-    if (data.timer < data.duration) {
-        const dir = data.dir;
-        const slashX = fighter.cx + dir * (fighter.hurtboxW / 2 + 15);
-        const slashY = fighter.cy - fighter.hurtboxH / 2;
-        ctx.save();
-        ctx.globalAlpha = 0.7;
-        ctx.strokeStyle = '#aaffcc';
-        ctx.shadowColor = '#aaffcc';
-        ctx.shadowBlur = 12;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(slashX, slashY - 30);
-        ctx.lineTo(slashX + dir * 20, slashY);
-        ctx.lineTo(slashX, slashY + 30);
-        ctx.stroke();
-        ctx.restore();
+    const blade = data.blade;
+    if (blade && blade.active) {
+        const sprite = Assets.effects.youmuGhostBlade;
+        const size = 60;
+        if (sprite) {
+            ctx.save();
+            ctx.translate(blade.x, blade.y);
+            ctx.rotate(blade.frame * 0.18 * blade.dir);
+            ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+            ctx.restore();
+        } else {
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.strokeStyle = '#aaffcc';
+            ctx.shadowColor = '#aaffcc';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(blade.x - blade.dir * 28, blade.y - 18);
+            ctx.lineTo(blade.x + blade.dir * 28, blade.y);
+            ctx.lineTo(blade.x - blade.dir * 28, blade.y + 18);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 }
 
-function _drawYoumuSlashOfPresentWorld(fighter, ctx, data) {
-    if (data.phase === 'charge') {
-        const chargeScale = 1 + data.chargeTimer * 3;
-        const dir = data.beamDir;
-        const cx = fighter.cx + dir * (fighter.hurtboxW / 2 + 10);
-        const cy = fighter.cy - fighter.hurtboxH / 2;
-
+function _drawYoumuGhostStep(fighter, ctx, data) {
+    const sprite = Assets.effects.youmuGhostTrail;
+    for (const particle of data.trailParticles) {
         ctx.save();
-        const radius = 20 * chargeScale;
-        ctx.fillStyle = `rgba(68, 221, 170, ${0.5 + data.chargeTimer})`;
-        ctx.shadowColor = '#44ddaa';
-        ctx.shadowBlur = 30;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    } else if (data.phase === 'fire') {
-        const beamRect = calcBeamRect(fighter, data.beamDir, 48, 800);
-        if (!beamRect) return;
-
-        const dir = data.beamDir;
-        ctx.save();
-        ctx.fillStyle = 'rgba(68, 221, 170, 0.85)';
-        ctx.shadowColor = '#44ddaa';
-        ctx.shadowBlur = 25;
-        ctx.fillRect(beamRect.x, beamRect.y, beamRect.w, beamRect.h);
-        ctx.restore();
-
-        // Inner glow
-        ctx.save();
-        ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.02) * 0.1;
-        ctx.fillStyle = '#aaffcc';
-        ctx.fillRect(beamRect.x, beamRect.y + 10, beamRect.w, beamRect.h - 20);
-        ctx.restore();
-
-        // Outer glow
-        ctx.save();
-        ctx.globalAlpha = 0.15;
-        ctx.fillStyle = '#66ffdd';
-        ctx.fillRect(beamRect.x, beamRect.y - 8, beamRect.w, beamRect.h + 16);
+        ctx.globalAlpha = particle.alpha;
+        if (sprite) {
+            const size = particle.size * 2.3;
+            ctx.drawImage(sprite, particle.x - size / 2, particle.y - size / 2, size, size);
+        } else {
+            ctx.fillStyle = '#66ffdd';
+            ctx.shadowColor = '#66ffdd';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.ellipse(particle.x, particle.y, particle.size, particle.size * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
         ctx.restore();
     }
 }
@@ -1489,7 +1488,9 @@ function _drawYoumuSlashOfPresentWorld(fighter, ctx, data) {
 
 function _drawShield(fighter, ctx) {
     const shield = fighter.shield;
-    const sprite = Assets.effects.shield;
+    const sprite = fighter.name === 'youmu' && Assets.effects.youmuSpiritShield
+        ? Assets.effects.youmuSpiritShield
+        : Assets.effects.shield;
     const size = Math.max(fighter.hurtboxW, fighter.hurtboxH) * 1.4;
     const cx = fighter.cx;
     const cy = fighter.cy - fighter.hurtboxH / 2;

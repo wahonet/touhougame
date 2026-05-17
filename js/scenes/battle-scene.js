@@ -591,8 +591,9 @@ export const BattleScene = {
                 timer: 1.5
             });
         } else if (pickup.type === 'hp') {
-            const healAmount = Math.round(MAX_HP * 0.2); // 200 HP
-            fighter.hp = Math.min(MAX_HP, fighter.hp + healAmount);
+            const maxHp = fighter.maxHp || MAX_HP;
+            const healAmount = Math.round(maxHp * 0.2);
+            fighter.hp = Math.min(maxHp, fighter.hp + healAmount);
             this.pickupPopups.push({
                 x: pickup.x + 16,
                 y: pickup.y,
@@ -665,7 +666,8 @@ export const BattleScene = {
     _drawHPBar(ctx, fighter, x, y, isLeft) {
         if (!fighter) return;
         const barW = 300, barH = 28;
-        const hpRatio = fighter.hp / MAX_HP;
+        const maxHp = fighter.maxHp || MAX_HP;
+        const hpRatio = fighter.hp / maxHp;
 
         const character = getCharacterDefinition(fighter.name);
         const displayName = character.uiName;
@@ -780,7 +782,7 @@ export const BattleScene = {
         ctx.font = `bold 16px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(`${Math.ceil(fighter.hp)}/${MAX_HP}`, x + barW / 2, barY + barH - 8);
+        ctx.fillText(`${Math.ceil(fighter.hp)}/${maxHp}`, x + barW / 2, barY + barH - 8);
 
         ctx.restore();
     },

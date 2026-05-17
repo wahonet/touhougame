@@ -71,7 +71,7 @@ function checkCharacterData() {
             errors.push(`Character "${id}" must define exactly 4 skills`);
         }
         for (const [index, skill] of character.skills.entries()) {
-            if (!skill.name || typeof skill.maxCooldown !== 'number') {
+            if (!skill.name || typeof skill.maxCooldown !== 'number' || !skill.type || !skill.description) {
                 errors.push(`Invalid skill ${index + 1} for character "${id}"`);
             }
         }
@@ -115,6 +115,10 @@ function checkAssets() {
         'assets/big_laser_beam.png',
         'assets/big_laser_head.png',
         'assets/fly_aura.png',
+        'assets/youmu_spirit_slash.png',
+        'assets/youmu_ghost_blade.png',
+        'assets/youmu_ghost_trail.png',
+        'assets/youmu_spirit_shield.png',
         'assets/platform.png',
         'assets/platform_small.png',
         'assets/pickup_cd.png',

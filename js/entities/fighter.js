@@ -7,7 +7,7 @@ import { Anim } from './animation.js';
 import { Assets } from '../core/asset-store.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { Game } from '../core/game-state.js';
-import { createSkillSlots } from '../data/characters.js';
+import { createSkillSlots, getCharacterDefinition } from '../data/characters.js';
 import { emitHitImpact } from '../core/battle-events.js';
 import * as SkillSystem from './fighter-skills.js';
 import * as AISystem from './fighter-ai.js';
@@ -28,9 +28,12 @@ export class Fighter {
         this.cy = groundY;
         this.facing = facing;
         this.isAI = isAI;
-        this.hp = MAX_HP;
+        const character = getCharacterDefinition(name) || {};
+        this.maxHp = character.maxHp || MAX_HP;
+        this.hp = this.maxHp;
         this.state = 'idle'; // idle, walk, attack, dead
         this.velocityY = 0;
+        this.velocityX = 0;
         this.isOnGround = true;
         this._atkHit = false;
         this.hitFlash = 0;
@@ -59,6 +62,12 @@ export class Fighter {
 
         // Normal attack damage
         this.attackDamage = 10;
+
+        // Status effects
+        this.stunTimer = 0;
+        this.slowTimer = 0;
+        this.slowMultiplier = 1;
+        this.invincible = false;
 
         // Animations
         this.anims = {};
@@ -150,7 +159,7 @@ export class Fighter {
      * @param {number} amount - Damage amount
      */
     damage(amount) {
-        if (this.state === 'dead') return;
+        if (this.state === 'dead' || this.invincible) return;
 
         // Shield absorbs damage first
         if (this.shield) {
@@ -213,14 +222,20 @@ export class Fighter {
             return;
         }
 
+        this._updateStatusTimers(dt);
+
         // Track landing (before physics)
         this._wasOnGround = this.isOnGround;
 
-        // Skill activation (any non-dead state, any skill key)
-        for (let i = 0; i < 4; i++) {
-            const keyIndex = i + 1;
-            if (skillPressed[keyIndex]) {
-                this.activateSkill(i, opponent);
+        const canAct = this.stunTimer <= 0;
+
+        // Skill activation (blocked while stunned)
+        if (canAct) {
+            for (let i = 0; i < 4; i++) {
+                const keyIndex = i + 1;
+                if (skillPressed[keyIndex]) {
+                    this.activateSkill(i, opponent);
+                }
             }
         }
 
@@ -273,11 +288,28 @@ export class Fighter {
             }
         }
 
+        if (this.velocityX !== 0) {
+            this.cx += this.velocityX;
+            this.velocityX *= 0.82;
+            if (Math.abs(this.velocityX) < 0.05) this.velocityX = 0;
+        }
+
         // AI or player input
-        if (this.isAI) {
-            this._updateAI(dt, opponent, platforms, pickups);
+        if (!canAct) {
+            if (this.state === 'walk' || this.state === 'attack') {
+                this.state = 'idle';
+                this._atkHit = false;
+                this._syncAnim();
+            }
         } else {
-            this._updatePlayer(dt, keys, attackPressed, jumpPressed);
+            const baseSpeed = this.moveSpeed;
+            this.moveSpeed = baseSpeed * (this.slowMultiplier || 1);
+            if (this.isAI) {
+                this._updateAI(dt, opponent, platforms, pickups);
+            } else {
+                this._updatePlayer(dt, keys, attackPressed, jumpPressed);
+            }
+            this.moveSpeed = baseSpeed;
         }
 
         // Check if walked off platform
@@ -348,10 +380,32 @@ export class Fighter {
         this.currentAnim.update(dt);
     }
 
+    _updateStatusTimers(dt) {
+        if (this.stunTimer > 0) {
+            this.stunTimer -= dt;
+            if (this.stunTimer < 0) this.stunTimer = 0;
+        }
+
+        if (this.slowTimer > 0) {
+            this.slowTimer -= dt;
+            if (this.slowTimer <= 0) {
+                this.slowTimer = 0;
+                this.slowMultiplier = 1;
+            }
+        } else {
+            this.slowMultiplier = 1;
+        }
+    }
+
     /** Player input handling */
     _updatePlayer(dt, keys, attackPressed, jumpPressed) {
         // Can't move or start actions during attack
         if (this.state === 'attack') return;
+
+        if (this.flying.active) {
+            this._updateFlightControls(keys, attackPressed);
+            return;
+        }
 
         // Movement
         let moving = false;
@@ -401,6 +455,46 @@ export class Fighter {
         if (attackPressed) {
             this.state = 'attack';
             this._atkHit = false;
+            this._syncAnim();
+        }
+    }
+
+    _updateFlightControls(keys, attackPressed) {
+        const flightSpeed = 4.2 * (this.slowMultiplier || 1);
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.a) dx -= 1;
+        if (keys.d) dx += 1;
+        if (keys.w) dy -= 1;
+        if (keys.s) dy += 1;
+
+        if (dx !== 0 && dy !== 0) {
+            dx *= Math.SQRT1_2;
+            dy *= Math.SQRT1_2;
+        }
+
+        if (dx < 0) this.setFacing('left');
+        if (dx > 0) this.setFacing('right');
+
+        this.cx += dx * flightSpeed;
+        this.cy += dy * flightSpeed;
+        this.velocityX = 0;
+        this.velocityY = 0;
+        this.isOnGround = false;
+        this._currentPlatform = null;
+
+        const minY = this.hurtboxH + 20;
+        const maxY = this.groundY;
+        if (this.cy < minY) this.cy = minY;
+        if (this.cy > maxY) this.cy = maxY;
+
+        if (attackPressed) {
+            this.state = 'attack';
+            this._atkHit = false;
+            this._syncAnim();
+        } else if (this.state !== 'idle') {
+            this.state = 'idle';
             this._syncAnim();
         }
     }

@@ -36,7 +36,6 @@ import {
     createAmbientParticles,
     drawAmbientEffects
 } from './pve-background.js';
-import { calcBeamRect } from '../entities/fighter-skills.js';
 
 export const PvEScene = {
     player: null,
@@ -76,7 +75,7 @@ export const PvEScene = {
 
         // Create player at level start
         this.player = new Fighter(Game.playerChar, 200, groundY, 'right', false);
-        this.player.hp = MAX_HP;
+        this.player.hp = this.player.maxHp || MAX_HP;
 
         this._platformTime = 0;
         this._playerPlatform = null;
@@ -479,7 +478,8 @@ export const PvEScene = {
                     star.y > hurtbox.y && star.y < hurtbox.y + hurtbox.h) {
                     if (!star.hitTargets.includes(enemy)) {
                         star.hitTargets.push(enemy);
-                        enemy.damage(20);
+                        enemy.stunTimer = Math.max(enemy.stunTimer || 0, 3);
+                        star.active = false;
                     }
                 }
             }
@@ -519,73 +519,49 @@ export const PvEScene = {
             }
         }
 
-        // Cherry Blossom Storm (Yuyuko skill 3) - AoE tick
+        // Cherry Blossom Storm (Yuyuko skill 3) - slow field, no damage
         const yuyukoSkill3 = player.skills[3];
         if (player.name === 'yuyuko' && yuyukoSkill3.active && yuyukoSkill3.data) {
             const data = yuyukoSkill3.data;
-            if (data.tickTimer !== undefined && data.tickTimer >= data.tickInterval) {
-                const hurtbox = enemy.getHurtbox();
-                const ecx = hurtbox.x + hurtbox.w / 2;
-                const ecy = hurtbox.y + hurtbox.h / 2;
-                const dx = ecx - data.cx;
-                const dy = ecy - data.cy;
-                if (dx * dx + dy * dy <= data.radius * data.radius) {
-                    if (!data._hitEnemies) data._hitEnemies = new Set();
-                    const tickKey = `${enemy.cx}_${enemy.cy}_${Math.floor(data.timer / data.tickInterval)}`;
-                    if (!data._hitEnemies.has(tickKey)) {
-                        data._hitEnemies.add(tickKey);
-                        enemy.damage(8);
-                    }
-                }
+            const hurtbox = enemy.getHurtbox();
+            const ecx = hurtbox.x + hurtbox.w / 2;
+            const ecy = hurtbox.y + hurtbox.h / 2;
+            const dx = ecx - data.cx;
+            const dy = ecy - data.cy;
+            if (dx * dx + dy * dy <= data.radius * data.radius) {
+                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.25);
+                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.45);
             }
         }
 
         // ---- YOUMU SKILLS ----
 
-        // Roukanken (Youmu skill 0) - wide slash
+        // Spirit Slash (Youmu skill 0) - homing half-spirit
         const youmuSkill0 = player.skills[0];
-        if (player.name === 'youmu' && youmuSkill0.active && youmuSkill0.data && !youmuSkill0.data.hitTarget) {
-            const data = youmuSkill0.data;
-            const slashRect = { x: data.slashX - data.width / 2, y: data.slashY - data.height / 2, w: data.width, h: data.height };
+        if (player.name === 'youmu' && youmuSkill0.active && youmuSkill0.data && youmuSkill0.data.spirit) {
+            const spirit = youmuSkill0.data.spirit;
             const hurtbox = enemy.getHurtbox();
-            if (rectsOverlap(slashRect, hurtbox)) {
-                youmuSkill0.data.hitTarget = true;
-                enemy.damage(50);
+            if (spirit.active && !spirit.hit && spirit.x > hurtbox.x && spirit.x < hurtbox.x + hurtbox.w &&
+                spirit.y > hurtbox.y && spirit.y < hurtbox.y + hurtbox.h) {
+                spirit.hit = true;
+                spirit.active = false;
+                enemy.damage(90);
+                youmuSkill0.data.hitEffects.push({ x: spirit.x, y: spirit.y, timer: 24 });
             }
         }
 
-        // Hakurouken Slash (Youmu skill 1) - dash hit
+        // Ghost Blade (Youmu skill 1) - returning blade
         const youmuSkill1 = player.skills[1];
-        if (player.name === 'youmu' && youmuSkill1.active && youmuSkill1.data && !youmuSkill1.data.hitTarget) {
+        if (player.name === 'youmu' && youmuSkill1.active && youmuSkill1.data && youmuSkill1.data.blade) {
             const data = youmuSkill1.data;
-            const dashRect = {
-                x: player.cx - 30,
-                y: player.cy - player.hurtboxH,
-                w: 60,
-                h: player.hurtboxH
-            };
+            const blade = data.blade;
+            const bladeRect = { x: blade.x - 28, y: blade.y - 28, w: 56, h: 56 };
             const hurtbox = enemy.getHurtbox();
-            if (rectsOverlap(dashRect, hurtbox)) {
-                youmuSkill1.data.hitTarget = true;
-                enemy.damage(80);
-            }
-        }
-
-        // Slash of Present World (Youmu skill 3) - beam
-        const youmuSkill3 = player.skills[3];
-        if (player.name === 'youmu' && youmuSkill3.active && youmuSkill3.data && youmuSkill3.data.phase === 'fire') {
-            const data = youmuSkill3.data;
-            const beamRect = calcBeamRect(player, data.beamDir, 48, 800);
-            if (beamRect) {
-                const hurtbox = enemy.getHurtbox();
-                if (rectsOverlap(beamRect, hurtbox)) {
-                    if (!data._hitEnemies) data._hitEnemies = new Set();
-                    const tickIdx = data.damageTicks.filter(Boolean).length - 1;
-                    const tickKey = `${enemy.cx}_${enemy.cy}_${tickIdx}`;
-                    if (!data._hitEnemies.has(tickKey)) {
-                        data._hitEnemies.add(tickKey);
-                        enemy.damage(40);
-                    }
+            if (blade.active && rectsOverlap(bladeRect, hurtbox)) {
+                if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
+                if (!data._pveHitEnemies.has(enemy)) {
+                    data._pveHitEnemies.add(enemy);
+                    enemy.damage(120);
                 }
             }
         }

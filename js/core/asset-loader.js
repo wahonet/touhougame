@@ -413,7 +413,11 @@ async function loadEffectAssets() {
         ['sealHit', 'assets/seal_hit.png'],
         ['bigLaserBeam', 'assets/big_laser_beam.png'],
         ['bigLaserHead', 'assets/big_laser_head.png'],
-        ['flyAura', 'assets/fly_aura.png']
+        ['flyAura', 'assets/fly_aura.png'],
+        ['youmuSpiritSlash', 'assets/youmu_spirit_slash.png'],
+        ['youmuGhostBlade', 'assets/youmu_ghost_blade.png'],
+        ['youmuGhostTrail', 'assets/youmu_ghost_trail.png'],
+        ['youmuSpiritShield', 'assets/youmu_spirit_shield.png']
     ];
 
     for (const [key, path] of singleEffects) {

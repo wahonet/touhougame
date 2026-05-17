@@ -78,6 +78,8 @@ export function draw(fighter, ctx) {
 
     ctx.drawImage(frame, x, y);
 
+    _drawStatusEffects(fighter, ctx);
+
     // Hit flash overlay
     if (fighter.hitFlash > 0) {
         ctx.save();
@@ -124,6 +126,46 @@ export function draw(fighter, ctx) {
             ctx.strokeRect(bigBeamRect.x, bigBeamRect.y, bigBeamRect.w, bigBeamRect.h);
         }
 
+        ctx.restore();
+    }
+}
+
+function _drawStatusEffects(fighter, ctx) {
+    const cx = fighter.cx;
+    const cy = fighter.cy - fighter.hurtboxH - 18;
+
+    if (fighter.stunTimer > 0) {
+        ctx.save();
+        const t = Date.now() * 0.008;
+        for (let i = 0; i < 5; i++) {
+            const a = t + i * Math.PI * 2 / 5;
+            const x = cx + Math.cos(a) * 26;
+            const y = cy + Math.sin(a) * 8;
+            ctx.fillStyle = '#ffdd44';
+            ctx.shadowColor = '#ffcc00';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            for (let p = 0; p < 5; p++) {
+                const r = p % 2 === 0 ? 6 : 2.5;
+                const pa = -Math.PI / 2 + p * Math.PI * 2 / 5;
+                ctx.lineTo(x + Math.cos(pa) * r, y + Math.sin(pa) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    if (fighter.slowTimer > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = '#88ccff';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#88ccff';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(fighter.cx, fighter.cy - 18, 28, 10, 0, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.restore();
     }
 }

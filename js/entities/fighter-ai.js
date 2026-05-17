@@ -3,7 +3,6 @@
  * Extracted from Fighter class to modularize AI logic.
  */
 import { AudioManager } from '../core/audio-manager.js';
-import { MAX_HP } from '../config/game-config.js';
 
 /**
  * Main AI update loop
@@ -25,8 +24,8 @@ export function updateAI(fighter, dt, opponent, platforms, pickups) {
     }
 
     const dist = Math.abs(fighter.cx - opponent.cx);
-    const hpRatio = fighter.hp / MAX_HP;
-    const oppHpRatio = opponent.hp / MAX_HP;
+    const hpRatio = fighter.hp / (fighter.maxHp || 1000);
+    const oppHpRatio = opponent.hp / (opponent.maxHp || 1000);
     const dy = Math.abs(fighter.cy - opponent.cy);
 
     // Tick cooldowns
@@ -329,7 +328,7 @@ function _executeDodge(fighter, threat, opponent, platforms) {
 function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms) {
     // Critical HP — activate shield if available
     if (hpRatio < 0.2) {
-        var shieldIdx = fighter.name === 'reimu' ? 2 : 3;
+        var shieldIdx = _findSkillByType(fighter, 'shield');
         if (fighter.skills[shieldIdx].cooldown <= 0 && !fighter.skills[shieldIdx].active && !fighter.shield) {
             fighter.activateSkill(shieldIdx, opponent);
             fighter.aiRetreatTimer = 30;
@@ -379,7 +378,7 @@ function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms
 
     // Medium HP — proactive shield before engaging
     if (hpRatio < 0.5 && dist < 300) {
-        var shieldIdx2 = fighter.name === 'reimu' ? 2 : 3;
+        var shieldIdx2 = _findSkillByType(fighter, 'shield');
         if (fighter.skills[shieldIdx2].cooldown <= 0 && !fighter.skills[shieldIdx2].active && !fighter.shield && Math.random() < 0.15) {
             fighter.activateSkill(shieldIdx2, opponent);
             return true;
@@ -391,6 +390,16 @@ function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms
 
 /** Pick best skill for combo follow-up */
 function _pickComboSkill(fighter, opponent, dist, dy) {
+    if (fighter.name === 'youmu') {
+        if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520) return 0;
+        if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 420) return 1;
+    }
+
+    if (fighter.name === 'yuyuko') {
+        if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active) return 1;
+        if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 450) return 0;
+    }
+
     // Try offensive skills first
     if (fighter.name === 'reimu') {
         // Spell cards for spread damage
@@ -412,9 +421,14 @@ function _pickComboSkill(fighter, opponent, dist, dy) {
 function _tryTacticalSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio, platforms) {
     if (fighter.name === 'reimu') {
         return _tryReimuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
-    } else {
+    } else if (fighter.name === 'marisa') {
         return _tryMarisaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'yuyuko') {
+        return _tryYuyukoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'youmu') {
+        return _tryYoumuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
     }
+    return false;
 }
 
 /** Tactical skill usage for Reimu */
@@ -517,6 +531,56 @@ function _tryMarisaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
             fighter.aiCooldown = 5;
             return true;
         }
+    }
+
+    return false;
+}
+
+function _tryYuyukoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && Math.random() < 0.3) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 480 && Math.random() < 0.3) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 240 && Math.random() < 0.28) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+
+    return false;
+}
+
+function _tryYoumuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 560 && Math.random() < 0.35) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 420 && Math.random() < 0.32) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 260 && hpRatio < 0.65 && Math.random() < 0.28) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 4;
+        return true;
     }
 
     return false;
@@ -827,4 +891,9 @@ function _findBestPickup(fighter, pickups, type) {
     }
 
     return best;
+}
+
+function _findSkillByType(fighter, type) {
+    const idx = fighter.skills.findIndex(skill => skill.type === type);
+    return idx >= 0 ? idx : 3;
 }

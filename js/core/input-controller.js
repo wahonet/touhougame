@@ -24,13 +24,15 @@ export function setupInput({ canvas, selectScene, dialogueScene, pveScene, reset
         }
         if (key === 'j') keyState.j = true;
 
-        if (key === 'j') Game.attackPressed = true;
-        if (key === 'w' || key === ' ') Game.jumpPressed = true;
+        if (!event.repeat) {
+            if (key === 'j') Game.attackPressed = true;
+            if (key === 'w' || key === ' ') Game.jumpPressed = true;
 
-        if (key === '1') Game.skillPressed[1] = true;
-        if (key === '2') Game.skillPressed[2] = true;
-        if (key === '3') Game.skillPressed[3] = true;
-        if (key === '4') Game.skillPressed[4] = true;
+            if (key === '1') Game.skillPressed[1] = true;
+            if (key === '2') Game.skillPressed[2] = true;
+            if (key === '3') Game.skillPressed[3] = true;
+            if (key === '4') Game.skillPressed[4] = true;
+        }
 
         if (Game.state === 'select') {
             selectScene.handleKey(key);

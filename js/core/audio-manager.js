@@ -1,5 +1,7 @@
 import { SFX_FILES } from '../data/asset-manifest.js';
 
+const AUDIO_CACHE_VERSION = '2026-05-18-bgm-v3';
+
 export const AudioManager = {
     ctx: null,
     buffers: {},
@@ -43,7 +45,7 @@ export const AudioManager = {
     },
 
     playBGM(name) {
-        if (this.bgm && this.bgm.src && this.bgm.src.includes(name)) {
+        if (this.bgm && this.bgm.dataset && this.bgm.dataset.name === name) {
             if (!this.muted && this.bgm.paused) {
                 this.bgm.play().catch(() => {});
             }
@@ -51,7 +53,8 @@ export const AudioManager = {
         }
 
         this.stopBGM();
-        const audio = new Audio(`audio/${name}.wav`);
+        const audio = new Audio(`audio/${name}.wav?v=${AUDIO_CACHE_VERSION}`);
+        audio.dataset.name = name;
         audio.loop = true;
         audio.volume = this.muted ? 0 : this.bgmVolume;
         audio.play().catch(() => {});

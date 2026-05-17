@@ -364,11 +364,7 @@ export class Fighter {
             this._syncAnim();
         }
 
-        // Clamp position to arena bounds
-        const halfW = this.hurtboxW / 2;
-        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
-        if (this.cx < halfW) this.cx = halfW;
-        if (this.cx > boundX - halfW) this.cx = boundX - halfW;
+        this.clampToBounds();
 
         // Hit flash decay
         if (this.hitFlash > 0) {
@@ -444,7 +440,7 @@ export class Fighter {
         }
 
         // Jump
-        if (jumpPressed) {
+        if (jumpPressed && this.isOnGround) {
             this.velocityY = -18;
             this.isOnGround = false;
             this._currentPlatform = null;
@@ -499,6 +495,25 @@ export class Fighter {
         }
     }
 
+    clampToBounds() {
+        const halfW = this.hurtboxW / 2;
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (this.cx < halfW) this.cx = halfW;
+        if (this.cx > boundX - halfW) this.cx = boundX - halfW;
+
+        const minY = this.hurtboxH + 20;
+        if (this.cy < minY) {
+            this.cy = minY;
+            if (this.velocityY < 0) this.velocityY = 0;
+        }
+        if (this.cy > this.groundY) {
+            this.cy = this.groundY;
+            this.velocityY = 0;
+            this.isOnGround = true;
+            this._currentPlatform = null;
+        }
+    }
+
     // ===================== DELEGATE WRAPPERS =====================
 
     /** AI update (delegates to fighter-ai.js) */
@@ -532,8 +547,8 @@ export class Fighter {
     }
 
     /** Calculate beam rectangle for given direction/size (delegates to fighter-skills.js) */
-    _calcBeamRect(dir, beamHeight, beamRange) {
-        return SkillSystem.calcBeamRect(this, dir, beamHeight, beamRange);
+    _calcBeamRect(dir, beamHeight, beamRange, centerY) {
+        return SkillSystem.calcBeamRect(this, dir, beamHeight, beamRange, centerY);
     }
 
     /** Draw the fighter on canvas (delegates to fighter-renderer.js) */

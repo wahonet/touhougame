@@ -119,6 +119,9 @@ export const BattleScene = {
 
         // Collision
         resolveCollision(player, enemy);
+        player.clampToBounds();
+        enemy.clampToBounds();
+        this._clampFightersToCameraView(player, enemy);
 
         // Update pickups
         this._updatePickups(dt);
@@ -574,6 +577,21 @@ export const BattleScene = {
             bobOffset: Math.random() * Math.PI * 2,
             spawnTime: Date.now()
         });
+    },
+
+    _clampFightersToCameraView(player, enemy) {
+        const margin = 18;
+        const minX = Game.camera.x + player.hurtboxW / 2 + margin;
+        const maxX = Game.camera.x + SCREEN_WIDTH - player.hurtboxW / 2 - margin;
+        for (const fighter of [player, enemy]) {
+            const halfW = fighter.hurtboxW / 2;
+            const localMin = Game.camera.x + halfW + margin;
+            const localMax = Game.camera.x + SCREEN_WIDTH - halfW - margin;
+            if (fighter.cx < localMin) fighter.cx = localMin;
+            if (fighter.cx > localMax) fighter.cx = localMax;
+            if (fighter.cx < minX && fighter === player) fighter.cx = minX;
+            if (fighter.cx > maxX && fighter === player) fighter.cx = maxX;
+        }
     },
 
     _collectPickup(fighter, pickup) {

@@ -53,6 +53,7 @@ export function updateAI(fighter, dt, opponent, platforms, pickups) {
     // LAYER 2: SURVIVAL CHECK (every frame)
     // ================================================================
 
+    if (_trySeekPickup(fighter, pickups, hpRatio, oppHpRatio, opponent, platforms)) return;
     if (_checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms)) return;
 
     // ================================================================
@@ -118,7 +119,7 @@ export function updateAI(fighter, dt, opponent, platforms, pickups) {
     // PICKUP AWARENESS
     // ================================================================
 
-    if (_trySeekPickup(fighter, pickups, hpRatio, oppHpRatio, opponent)) return;
+    if (_trySeekPickup(fighter, pickups, hpRatio, oppHpRatio, opponent, platforms)) return;
 
     // ================================================================
     // PLATFORM TACTICS
@@ -346,12 +347,12 @@ function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms
         if (pickups && pickups.length > 0) {
             var hpPickup = _findBestPickup(fighter, pickups, 'hp');
             if (hpPickup) {
-                var pickupDist = Math.abs(fighter.cx - (hpPickup.x + hpPickup.width / 2));
-                if (pickupDist < 600) {
-                    _moveToward(fighter, hpPickup.x + hpPickup.width / 2, fighter.moveSpeed);
+                var pickupDist = Math.abs(fighter.cx - _pickupCenterX(hpPickup));
+                if (pickupDist < 1100) {
+                    _moveToPickup(fighter, hpPickup, platforms, opponent);
                     fighter.aiAction = 'seekPickup';
                     fighter.aiActionTarget = hpPickup;
-                    fighter.aiActionTimer = 5;
+                    fighter.aiActionTimer = 4;
                     return true;
                 }
             }
@@ -587,43 +588,30 @@ function _tryYoumuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
 }
 
 /** Try seeking pickups based on HP and situation */
-function _trySeekPickup(fighter, pickups, hpRatio, oppHpRatio, opponent) {
+function _trySeekPickup(fighter, pickups, hpRatio, oppHpRatio, opponent, platforms) {
     if (!pickups || pickups.length === 0) return false;
 
-    // Don't chase pickups when opponent is low HP — go for kill
-    if (oppHpRatio < 0.2) return false;
+    const nearbyThreat = Math.abs(fighter.cx - opponent.cx) < 180;
+    const critical = hpRatio < 0.35;
+    if (!critical && oppHpRatio < 0.18) return false;
 
-    // Seek HP pickup when moderately low
-    if (hpRatio < 0.5) {
-        var hpPickup = _findBestPickup(fighter, pickups, 'hp');
-        if (hpPickup) {
-            var pickupDist = Math.abs(fighter.cx - (hpPickup.x + hpPickup.width / 2));
-            if (pickupDist < 500 && Math.random() < 0.3) {
-                fighter.aiAction = 'seekPickup';
-                fighter.aiActionTarget = hpPickup;
-                fighter.aiActionTimer = 8;
-                _moveToward(fighter, hpPickup.x + hpPickup.width / 2, fighter.moveSpeed);
-                return true;
-            }
-        }
-    }
+    let target = null;
+    if (hpRatio < 0.65) target = _findBestPickup(fighter, pickups, 'hp');
+    if (!target && hpRatio < 0.45) target = _findBestPickup(fighter, pickups, null);
+    if (!target && _hasImportantCooldown(fighter)) target = _findBestPickup(fighter, pickups, 'cd');
+    if (!target) return false;
 
-    // Consider CD pickup if important skill is on cooldown
-    if (fighter.skills[1].cooldown > 10) {
-        var cdPickup = _findBestPickup(fighter, pickups, 'cd');
-        if (cdPickup) {
-            var cdDist = Math.abs(fighter.cx - (cdPickup.x + cdPickup.width / 2));
-            if (cdDist < 400 && Math.random() < 0.15) {
-                fighter.aiAction = 'seekPickup';
-                fighter.aiActionTarget = cdPickup;
-                fighter.aiActionTimer = 8;
-                _moveToward(fighter, cdPickup.x + cdPickup.width / 2, fighter.moveSpeed);
-                return true;
-            }
-        }
-    }
+    const pickupDistanceToTarget = Math.abs(fighter.cx - _pickupCenterX(target));
+    const maxChaseDist = critical ? 1400 : 720;
+    if (pickupDistanceToTarget > maxChaseDist) return false;
+    if (nearbyThreat && !critical && hpRatio > 0.5) return false;
 
-    return false;
+    fighter.aiAction = 'seekPickup';
+    fighter.aiActionTarget = target;
+    fighter.aiActionTimer = 4;
+    _moveToPickup(fighter, target, platforms, opponent);
+    return true;
+
 }
 
 /** Platform navigation tactics */
@@ -867,6 +855,73 @@ function _findNearestPlatform(fighter, platforms, strategy) {
 }
 
 /** Find best pickup by type: 'hp', 'cd', or null for any */
+function _hasImportantCooldown(fighter) {
+    for (let i = 0; i < fighter.skills.length; i++) {
+        const skill = fighter.skills[i];
+        if (skill.cooldown > skill.maxCooldown * 0.45) return true;
+    }
+    return false;
+}
+
+function _moveToPickup(fighter, pickup, platforms, opponent) {
+    const targetX = _pickupCenterX(pickup);
+    const targetY = _pickupCenterY(pickup);
+    const dx = targetX - fighter.cx;
+    const speed = Math.abs(dx) < 12 ? fighter.moveSpeed * 0.35 : fighter.moveSpeed * 1.15;
+
+    if (Math.abs(dx) > 8) {
+        _moveToward(fighter, targetX, speed);
+    } else if (fighter.state !== 'idle') {
+        fighter.state = 'idle';
+        fighter._syncAnim();
+    }
+
+    const pickupAbove = targetY < fighter.cy - 60;
+    if (pickupAbove && fighter.isOnGround) {
+        const platform = _findPlatformNearX(platforms, targetX, targetY);
+        if (!platform || Math.abs(dx) < 140) {
+            fighter.velocityY = -18;
+            fighter.isOnGround = false;
+            fighter._currentPlatform = null;
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_jump');
+        }
+    }
+
+    if (Math.abs(fighter.cx - opponent.cx) < 130 && fighter.isOnGround &&
+        fighter.hp / (fighter.maxHp || 1000) < 0.45) {
+        fighter.velocityY = -16;
+        fighter.isOnGround = false;
+        fighter._currentPlatform = null;
+    }
+}
+
+function _pickupCenterX(pickup) {
+    if (pickup.getHurtbox) {
+        const box = pickup.getHurtbox();
+        return box.x + box.w / 2;
+    }
+    return pickup.x + (pickup.width || 30) / 2;
+}
+
+function _pickupCenterY(pickup) {
+    if (pickup.getHurtbox) {
+        const box = pickup.getHurtbox();
+        return box.y + box.h / 2;
+    }
+    return pickup.y + (pickup.height || 30) / 2;
+}
+
+function _findPlatformNearX(platforms, targetX, targetY) {
+    if (!platforms) return null;
+    for (const platform of platforms) {
+        if (targetX >= platform.x - 30 && targetX <= platform.x + platform.w + 30 &&
+            Math.abs(platform.y - targetY) < 80) {
+            return platform;
+        }
+    }
+    return null;
+}
+
 function _findBestPickup(fighter, pickups, type) {
     if (!pickups || pickups.length === 0) return null;
 
@@ -875,7 +930,7 @@ function _findBestPickup(fighter, pickups, type) {
 
     for (var i = 0; i < pickups.length; i++) {
         var pickup = pickups[i];
-        var pickupCx = pickup.x + (pickup.width || 30) / 2;
+        var pickupCx = _pickupCenterX(pickup);
         var d = Math.abs(fighter.cx - pickupCx);
 
         if (type === 'hp' && pickup.type === 'hp' && d < bestDist) {

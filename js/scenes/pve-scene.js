@@ -59,6 +59,7 @@ export const PvEScene = {
     currentLevel: null,
     levelConfig: null,
     ambientParticles: [],
+    pickupSpawnTimer: 8,
 
     init(levelIndex) {
         const groundY = GROUND_Y;
@@ -96,6 +97,7 @@ export const PvEScene = {
         this.victoryTriggered = false;
         this.defeatTriggered = false;
         this.pickups = [];
+        this.pickupSpawnTimer = 6;
         this.comboCount = 0;
         this.comboTimer = 0;
         this.damageNumbers = [];
@@ -218,6 +220,7 @@ export const PvEScene = {
         // --- Update player ---
         const keys = Game.keys;
         player.update(dt, keys, Game.attackPressed, Game.jumpPressed, Game.skillPressed, this._getDummyOpponent(), this.platforms, []);
+        player.clampToBounds();
 
         // --- Update enemies ---
         for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -319,6 +322,12 @@ export const PvEScene = {
         });
 
         // --- Update pickups ---
+        this.pickupSpawnTimer -= dt;
+        if (this.pickupSpawnTimer <= 0 && this.pickups.length < 4) {
+            this._spawnTimedPickup();
+            this.pickupSpawnTimer = 10 + Math.random() * 6;
+        }
+
         for (let i = this.pickups.length - 1; i >= 0; i--) {
             const pickup = this.pickups[i];
             pickup.update(dt);
@@ -397,12 +406,22 @@ export const PvEScene = {
         // _checkPlayerSkillsHitEnemy exclusively.
         if (!this._dummyOpponent) {
             this._dummyOpponent = {
-                cx: 99999, cy: GROUND_Y, state: 'idle',
+                cx: 99999, cy: GROUND_Y, hurtboxH: 100, state: 'idle',
                 _atkHit: false,
                 getHurtbox: () => ({ x: 99999, y: GROUND_Y - 100, w: 50, h: 100 }),
                 getHitbox: () => null,
                 damage: () => {}
             };
+        }
+        const nearest = this.enemies
+            .filter(enemy => enemy.state !== 'dead')
+            .sort((a, b) => Math.abs(a.cx - this.player.cx) - Math.abs(b.cx - this.player.cx))[0];
+        if (nearest) {
+            this._dummyOpponent.cx = nearest.cx;
+            this._dummyOpponent.cy = nearest.cy;
+        } else {
+            this._dummyOpponent.cx = 99999;
+            this._dummyOpponent.cy = GROUND_Y;
         }
         return this._dummyOpponent;
     },
@@ -450,7 +469,7 @@ export const PvEScene = {
                 const beamHeight = si === 0 ? 40 : 64;
                 const beamRange = si === 0 ? 800 : 1000;
                 const tickDamage = si === 0 ? 20 : 100;
-                const beamRect = player._calcBeamRect(laserSkill.data.beamDir, beamHeight, beamRange);
+                const beamRect = player._calcBeamRect(laserSkill.data.beamDir, beamHeight, beamRange, laserSkill.data.aimY);
                 if (beamRect) {
                     const hurtbox = enemy.getHurtbox();
                     if (rectsOverlap(beamRect, hurtbox)) {
@@ -497,7 +516,7 @@ export const PvEScene = {
                     proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
                     proj.hitTarget = true;
                     proj.active = false;
-                    enemy.damage(12);
+                    enemy.damage(18);
                     yuyukoSkill0.data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
                 }
             }
@@ -513,7 +532,7 @@ export const PvEScene = {
                     orb.y > hurtbox.y && orb.y < hurtbox.y + hurtbox.h) {
                     orb.hit = true;
                     orb.active = false;
-                    enemy.damage(100);
+                    enemy.damage(140);
                     yuyukoSkill1.data.hitEffects.push({ x: orb.x, y: orb.y, timer: 30 });
                 }
             }
@@ -529,8 +548,13 @@ export const PvEScene = {
             const dx = ecx - data.cx;
             const dy = ecy - data.cy;
             if (dx * dx + dy * dy <= data.radius * data.radius) {
-                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.25);
-                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.45);
+                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.35);
+                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.25);
+                if (!data._pveSnaredEnemies) data._pveSnaredEnemies = new Set();
+                if (!data._pveSnaredEnemies.has(enemy)) {
+                    data._pveSnaredEnemies.add(enemy);
+                    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 1.2);
+                }
             }
         }
 
@@ -752,6 +776,31 @@ export const PvEScene = {
                 color: ['#ffcc44', '#ff6644', '#ffaa22', '#ffffff'][Math.floor(Math.random() * 4)]
             });
         }
+    },
+
+    _spawnTimedPickup() {
+        const types = ['hp', 'cd', 'power'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const level = this.levelConfig;
+        const minX = Math.max(140, this.player.cx + 180);
+        const maxX = Math.min(level.width - 140, this.player.cx + SCREEN_WIDTH * 0.85);
+        let x = minX < maxX ? minX + Math.random() * (maxX - minX) : this.player.cx + 240;
+        let y = GROUND_Y - 34;
+
+        const visiblePlatforms = this.platforms.filter(platform =>
+            platform.x > Game.camera.x - 80 &&
+            platform.x < Game.camera.x + SCREEN_WIDTH + 220 &&
+            platform.y < GROUND_Y - 60
+        );
+
+        if (visiblePlatforms.length > 0 && Math.random() < 0.45) {
+            const platform = visiblePlatforms[Math.floor(Math.random() * visiblePlatforms.length)];
+            x = platform.x + 20 + Math.random() * Math.max(20, platform.w - 40);
+            y = platform.y - 24;
+        }
+
+        x = Math.max(80, Math.min(level.width - 80, x));
+        this.pickups.push(new Pickup(type, x, y));
     },
 
     _drawDamageNumbers(ctx, cam) {

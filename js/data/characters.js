@@ -47,10 +47,10 @@ export const CHARACTER_DEFINITIONS = {
         maxHp: 1500,
         skillColors: ['#ff66aa', '#cc88ff', '#ffaadd', '#88ccff'],
         skills: [
-            { name: '反魂蝶', type: 'damage', maxCooldown: 15, description: '放出蝶形弹幕，覆盖前方扇形范围。' },
-            { name: '幽雅灵弹', type: 'damage', maxCooldown: 25, description: '缓慢追踪的幽魂弹，命中后爆发。' },
-            { name: '死出之导', type: 'shield', maxCooldown: 20, description: '以幽魂护身，短时间吸收伤害。' },
-            { name: '樱舞幽径', type: 'utility', maxCooldown: 30, description: '展开樱花领域，进入其中的敌人被减速。' }
+            { name: '反魂蝶', type: 'damage', maxCooldown: 15, description: '八枚蝶弹扇形展开，命中造成稳定伤害。' },
+            { name: '幽雅灵弹', type: 'damage', maxCooldown: 25, description: '高速追踪幽魂弹，命中后造成高额伤害。' },
+            { name: '死出之导', type: 'shield', maxCooldown: 20, description: '展开更坚固的幽魂护盾，吸收大量伤害。' },
+            { name: '西行妖梦境', type: 'utility', maxCooldown: 30, description: '在敌人位置展开樱花梦境，束缚并大幅减速。' }
         ]
     },
     youmu: {

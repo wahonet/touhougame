@@ -43,7 +43,7 @@ export function activateSkill(fighter, index, opponent) {
             case 0: _activateYuyukoSoulButterfly(fighter, skill); break;
             case 1: _activateYuyukoDeathInvitation(fighter, skill, opponent); break;
             case 2: _activateYuyukoSpiritGuide(fighter, skill); break;
-            case 3: _activateYuyukoCherryBlossomStorm(fighter, skill); break;
+            case 3: _activateYuyukoCherryBlossomStorm(fighter, skill, opponent); break;
         }
     } else if (fighter.name === 'youmu') {
         switch (index) {
@@ -136,7 +136,8 @@ function _activateMarisaLaser(fighter, skill) {
         chargeTimer: 0,
         fireTimer: 0,
         damageTicks: [false, false, false],
-        beamDir: fighter.facing === 'right' ? 1 : -1
+        beamDir: fighter.facing === 'right' ? 1 : -1,
+        aimY: fighter.cy - fighter.hurtboxH / 2
     };
 }
 
@@ -198,13 +199,13 @@ function _activateYuyukoSoulButterfly(fighter, skill) {
     };
 
     const dir = fighter.facing === 'right' ? 1 : -1;
-    for (let i = 0; i < 6; i++) {
-        const angle = (-20 + (40 / 5) * i) * Math.PI / 180;
+    for (let i = 0; i < 8; i++) {
+        const angle = (-24 + (48 / 7) * i) * Math.PI / 180;
         skill.data.projectiles.push({
             x: fighter.cx + dir * 30,
             y: fighter.cy - fighter.hurtboxH / 2,
-            vx: Math.cos(angle) * 9 * dir,
-            vy: Math.sin(angle) * 9,
+            vx: Math.cos(angle) * 8.8 * dir,
+            vy: Math.sin(angle) * 8.8,
             active: true,
             frame: 0,
             hitTarget: false
@@ -220,7 +221,7 @@ function _activateYuyukoDeathInvitation(fighter, skill, opponent) {
         orb: {
             x: fighter.cx + dir * 30,
             y: fighter.cy - fighter.hurtboxH / 2,
-            speed: 3.5,
+            speed: 4.2,
             active: true,
             frame: 0,
             hit: false
@@ -234,9 +235,9 @@ function _activateYuyukoDeathInvitation(fighter, skill, opponent) {
 function _activateYuyukoSpiritGuide(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
     fighter.shield = {
-        hp: 200,
-        maxHp: 200,
-        duration: 5,
+        hp: 360,
+        maxHp: 360,
+        duration: 8,
         timer: 0,
         flashTimer: 0,
         shatterTimer: 0
@@ -245,14 +246,19 @@ function _activateYuyukoSpiritGuide(fighter, skill) {
 }
 
 /** Skill 3: 樱舞幻阵 - Area effect radius 120, 8 dmg/tick for 3s */
-function _activateYuyukoCherryBlossomStorm(fighter, skill) {
+function _activateYuyukoCherryBlossomStorm(fighter, skill, opponent) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const targetBox = opponent && opponent.getHurtbox ? opponent.getHurtbox() : null;
+    const targetX = targetBox ? targetBox.x + targetBox.w / 2 : fighter.cx + dir * 220;
+    const targetY = targetBox ? targetBox.y + targetBox.h / 2 : fighter.cy - fighter.hurtboxH / 2;
     skill.data = {
-        cx: fighter.cx,
-        cy: fighter.cy - fighter.hurtboxH / 2,
-        radius: 120,
-        duration: 3,
+        cx: targetX,
+        cy: targetY,
+        radius: 170,
+        duration: 4,
         timer: 0,
+        snaredTargets: [],
         petals: []
     };
     // Spawn initial petals
@@ -260,8 +266,8 @@ function _activateYuyukoCherryBlossomStorm(fighter, skill) {
         skill.data.petals.push({
             angle: Math.random() * Math.PI * 2,
             dist: Math.random() * skill.data.radius,
-            speed: 0.5 + Math.random() * 1.5,
-            size: 3 + Math.random() * 5,
+            speed: 0.6 + Math.random() * 1.8,
+            size: 4 + Math.random() * 6,
             alpha: 0.3 + Math.random() * 0.7
         });
     }
@@ -339,7 +345,7 @@ function _activateYoumuGhostStep(fighter, skill) {
 export function getBeamRect(fighter) {
     const laserSkill = fighter.skills[0];
     if (!laserSkill.active || !laserSkill.data || laserSkill.data.phase !== 'fire') return null;
-    return calcBeamRect(fighter, laserSkill.data.beamDir, 40, 800);
+    return calcBeamRect(fighter, laserSkill.data.beamDir, 40, 800, laserSkill.data.aimY);
 }
 
 /** Get the beam rectangle for big laser */
@@ -349,9 +355,10 @@ export function getBigBeamRect(fighter) {
     return calcBeamRect(fighter, bigSkill.data.beamDir, 64, 1000);
 }
 
-export function calcBeamRect(fighter, dir, beamHeight, beamRange) {
+export function calcBeamRect(fighter, dir, beamHeight, beamRange, centerY) {
     const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
-    const beamY = fighter.cy - fighter.hurtboxH / 2 - beamHeight / 2;
+    const beamCenterY = centerY || fighter.cy - fighter.hurtboxH / 2;
+    const beamY = beamCenterY - beamHeight / 2;
     let beamStartX, beamEndX;
     if (dir === 1) {
         beamStartX = fighter.cx + fighter.hurtboxW / 2;
@@ -528,6 +535,11 @@ function _updateReimuFlight(fighter, skill, dt) {
 /** Update Marisa regular laser */
 function _updateMarisaLaser(fighter, skill, dt, opponent) {
     const data = skill.data;
+    const targetY = opponent && opponent.cy !== undefined
+        ? opponent.cy - ((opponent.hurtboxH || 100) / 2)
+        : fighter.cy - fighter.hurtboxH / 2;
+    const trackRate = data.phase === 'fire' ? 0.08 : 0.18;
+    data.aimY += (targetY - data.aimY) * trackRate;
 
     if (data.phase === 'charge') {
         data.chargeTimer += dt;
@@ -543,7 +555,7 @@ function _updateMarisaLaser(fighter, skill, dt, opponent) {
         for (let i = 0; i < 3; i++) {
             if (!data.damageTicks[i] && data.fireTimer >= tickTimes[i]) {
                 data.damageTicks[i] = true;
-                const beamRect = calcBeamRect(fighter, data.beamDir, 40, 800);
+                const beamRect = calcBeamRect(fighter, data.beamDir, 40, 800, data.aimY);
                 if (beamRect && opponent.state !== 'dead') {
                     const hurtbox = opponent.getHurtbox();
                     if (rectsOverlap(beamRect, hurtbox)) {
@@ -667,7 +679,7 @@ function _updateYuyukoSoulButterfly(fighter, skill, dt, opponent) {
             if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
                 proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
                 proj.hitTarget = true;
-                opponent.damage(12);
+                opponent.damage(18);
                 emitHitImpact({ x: proj.x, y: proj.y, color: '#ff66aa' });
                 data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
                 proj.active = false;
@@ -724,7 +736,7 @@ function _updateYuyukoDeathInvitation(fighter, skill, dt, opponent) {
                 orb.y > hurtbox.y && orb.y < hurtbox.y + hurtbox.h) {
                 orb.active = false;
                 orb.hit = true;
-                opponent.damage(100);
+                opponent.damage(140);
                 emitHitImpact({ x: orb.x, y: orb.y, color: '#cc88ff' });
                 data.hitEffects.push({ x: orb.x, y: orb.y, timer: 30 });
                 data.hitTimer = 0;
@@ -771,11 +783,7 @@ function _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent) {
     const data = skill.data;
     data.timer += dt;
 
-    // Center follows fighter loosely
-    data.cx = fighter.cx;
-    data.cy = fighter.cy - fighter.hurtboxH / 2;
-
-    // Functional field: slow targets inside the petals, no damage.
+    // Functional field: snare and heavily slow targets inside the petals, no damage.
     if (opponent.state !== 'dead') {
         const hurtbox = opponent.getHurtbox();
         const ocx = hurtbox.x + hurtbox.w / 2;
@@ -784,8 +792,12 @@ function _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent) {
         const dy = ocy - data.cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < data.radius) {
-            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.25);
-            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.45);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.35);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.25);
+            if (!data.snaredTargets.includes(opponent)) {
+                data.snaredTargets.push(opponent);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 1.2);
+            }
         }
     }
 
@@ -930,8 +942,12 @@ function _updateYoumuGhostStep(fighter, skill, dt) {
     const data = skill.data;
     data.timer += dt;
 
-    fighter.cx += data.dir * 13;
-    fighter.invincible = data.timer < data.duration;
+    const dashing = data.timer <= data.duration;
+    fighter.invincible = dashing;
+    if (dashing) {
+        fighter.cx += data.dir * 760 * dt;
+        if (typeof fighter.clampToBounds === 'function') fighter.clampToBounds();
+    }
 
     data.trailParticles.push({
         x: fighter.cx,
@@ -1120,7 +1136,7 @@ function _drawMarisaLaser(fighter, ctx, data) {
             ctx.restore();
         }
     } else if (data.phase === 'fire') {
-        const beamRect = calcBeamRect(fighter, data.beamDir, 40, 800);
+        const beamRect = calcBeamRect(fighter, data.beamDir, 40, 800, data.aimY);
         if (!beamRect) return;
 
         const dir = data.beamDir;

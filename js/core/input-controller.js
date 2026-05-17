@@ -10,7 +10,7 @@ const keyState = {
     s: false
 };
 
-export function setupInput({ canvas, selectScene, dialogueScene, resetGame, audioManager }) {
+export function setupInput({ canvas, selectScene, dialogueScene, pveScene, resetGame, audioManager }) {
     document.addEventListener('keydown', event => {
         const key = event.key.toLowerCase();
 
@@ -40,6 +40,13 @@ export function setupInput({ canvas, selectScene, dialogueScene, resetGame, audi
                     Game.state === 'pve' || Game.state === 'pve_victory' ||
                     Game.state === 'pve_defeat') && key === 'r') {
             resetGame();
+        } else if (Game.state === 'pve_victory' && key === 'n') {
+            // Next level
+            if (pveScene && pveScene.currentLevel < 2) {
+                Game.currentLevel = pveScene.currentLevel + 1;
+                Game.state = 'pve';
+                pveScene.init(Game.currentLevel);
+            }
         }
 
         if (key === 'm') {

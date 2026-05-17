@@ -32,6 +32,40 @@ export const CHARACTER_DEFINITIONS = {
             { name: '群星闪耀', maxCooldown: 20 },
             { name: '防护罩', maxCooldown: 20 }
         ]
+    },
+    yuyuko: {
+        id: 'yuyuko',
+        displayName: '幽幽子',
+        englishName: 'Yuyuko',
+        selectName: '幽幽子 (Yuyuko)',
+        uiName: '幽幽子 Yuyuko',
+        resultName: '幽幽子 (Yuyuko)',
+        accentColor: '#ff88cc',
+        selectAccentColor: '#ff66bb',
+        skillColors: ['#ff66aa', '#cc88ff', '#ffaadd', '#88ccff'],
+        skills: [
+            { name: '反魂蝶', maxCooldown: 15 },
+            { name: '幽雅地死去', maxCooldown: 25 },
+            { name: '死出之导', maxCooldown: 20 },
+            { name: '樱舞幻阵', maxCooldown: 30 }
+        ]
+    },
+    youmu: {
+        id: 'youmu',
+        displayName: '妖梦',
+        englishName: 'Youmu',
+        selectName: '妖梦 (Youmu)',
+        uiName: '妖梦 Youmu',
+        resultName: '妖梦 (Youmu)',
+        accentColor: '#88eebb',
+        selectAccentColor: '#66ddaa',
+        skillColors: ['#44ddaa', '#88ccff', '#aaffcc', '#66ffdd'],
+        skills: [
+            { name: '楼观剑', maxCooldown: 12 },
+            { name: '白楼剑斩', maxCooldown: 25 },
+            { name: '半灵冲刺', maxCooldown: 18 },
+            { name: '现世斩', maxCooldown: 28 }
+        ]
     }
 };
 

@@ -5,11 +5,17 @@
 ## 运行方式
 
 ```bash
-cd F:\vibecodinggame\vb_touhou
-python -m http.server 8000
+cd touhougame
+npm run serve
 ```
 
 然后打开浏览器访问: http://localhost:8000
+
+提交或重构前建议运行:
+
+```bash
+npm run check
+```
 
 ## 操作方式
 
@@ -17,8 +23,9 @@ python -m http.server 8000
 
 | 按键 | 功能 |
 |------|------|
-| 点击角色 / 按 1 / 按 2 | 选择角色 |
-| Enter | 确认选择，开始战斗 |
+| 点击角色 / 按 1-4 | 选择角色 |
+| Enter | 进入 PvP 对战 |
+| 5 | 进入 PvE 过关 |
 
 ### 对话阶段
 
@@ -38,7 +45,7 @@ python -m http.server 8000
 
 ## 战斗规则
 
-- 双方初始 HP = 100
+- 双方初始 HP = 1000
 - 攻击命中造成 10 点伤害
 - 攻击动画播放期间无法再次攻击
 - 伤害判定在攻击动画的中间帧触发

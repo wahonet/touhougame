@@ -6,6 +6,7 @@ import { MAX_HP, SCREEN_HEIGHT } from '../config/game-config.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { emitHitImpact } from '../core/battle-events.js';
 import { rectsOverlap } from '../systems/collision.js';
+import { createSpreadBullets, createRingBullets, createSpiralBullets } from './bullet.js';
 
 // ===================== PIXEL ART SPRITE GENERATORS =====================
 
@@ -285,6 +286,9 @@ export class Enemy {
         // Boss-specific
         this.phaseTwo = false;
         this.specialCooldown = 0;
+        this.projectiles = [];
+        this.attackPattern = 0;
+        this.patternTimer = 0;
     }
 
     getHurtbox() {
@@ -400,6 +404,11 @@ export class Enemy {
                 this.attackCooldown = this.type === 'boss' ? 0.8 : 1.2;
             }
         }
+
+        // Boss projectile update
+        if (this.type === 'boss') {
+            this._updateBossProjectiles(dt, playerCx, playerCy);
+        }
     }
 
     _aiSlime(dt, dist, playerCx, playerCy) {
@@ -502,6 +511,9 @@ export class Enemy {
     _aiBoss(dt, dist, playerCx, playerCy) {
         if (this.state === 'attack') return;
 
+        // Pattern timer
+        this.patternTimer += dt;
+
         // Boss is always aggressive
         if (dist < this.attackRange && this.attackCooldown <= 0) {
             this.state = 'attack';
@@ -509,20 +521,95 @@ export class Enemy {
             return;
         }
 
-        // Phase 2: use special attacks (jump slam)
-        if (this.phaseTwo && this.specialCooldown <= 0 && dist < 200) {
-            this.specialCooldown = 5;
-            // Jump toward player
-            if (this.isOnGround) {
+        // Phase-based projectile attacks
+        if (this.phaseTwo) {
+            // Phase 2: More aggressive, shorter cooldowns
+            if (this.specialCooldown <= 0) {
+                this._bossSpecialAttack(playerCx, playerCy);
+                this.specialCooldown = 2;
+            }
+            // Jump slam
+            if (this.patternTimer > 6 && this.isOnGround) {
                 this.velocityY = -15;
                 this.isOnGround = false;
+                this.patternTimer = 0;
+            }
+        } else {
+            // Phase 1: Periodic projectile attacks
+            if (this.specialCooldown <= 0) {
+                this._bossRangedAttack(playerCx, playerCy);
+                this.specialCooldown = 3;
             }
         }
 
         const dir = playerCx > this.cx ? 1 : -1;
-        const moveSpeed = this.phaseTwo ? this.speed * 1.2 : this.speed;
+        const moveSpeed = this.phaseTwo ? this.speed * 1.5 : this.speed;
         this.cx += dir * moveSpeed;
         this.state = 'walk';
+    }
+
+    /** Phase 1: Fire spread of projectiles */
+    _bossRangedAttack(playerCx, playerCy) {
+        const count = 5;
+        const spreadAngle = Math.PI * 0.4; // 72 degree spread
+        const baseAngle = Math.atan2(playerCy - this.cy, playerCx - this.cx);
+        for (let i = 0; i < count; i++) {
+            const angle = baseAngle - spreadAngle / 2 + (spreadAngle / (count - 1)) * i;
+            this.projectiles.push({
+                x: this.cx,
+                y: this.cy - this.height / 2,
+                vx: Math.cos(angle) * 4,
+                vy: Math.sin(angle) * 4,
+                radius: 8,
+                damage: 15,
+                life: 3,
+                color: '#ff4444'
+            });
+        }
+    }
+
+    /** Phase 2: Circular burst + aimed shot */
+    _bossSpecialAttack(playerCx, playerCy) {
+        // Circular burst of 12 projectiles
+        const count = 12;
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            this.projectiles.push({
+                x: this.cx,
+                y: this.cy - this.height / 2,
+                vx: Math.cos(angle) * 3.5,
+                vy: Math.sin(angle) * 3.5,
+                radius: 10,
+                damage: 20,
+                life: 4,
+                color: '#ffcc00'
+            });
+        }
+        // Plus an aimed fast shot
+        const aimAngle = Math.atan2(playerCy - this.cy, playerCx - this.cx);
+        this.projectiles.push({
+            x: this.cx,
+            y: this.cy - this.height / 2,
+            vx: Math.cos(aimAngle) * 6,
+            vy: Math.sin(aimAngle) * 6,
+            radius: 12,
+            damage: 30,
+            life: 3,
+            color: '#ff8800'
+        });
+    }
+
+    /** Update boss projectiles */
+    _updateBossProjectiles(dt, playerCx, playerCy) {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const p = this.projectiles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= dt;
+            if (p.life <= 0) {
+                this.projectiles.splice(i, 1);
+            }
+        }
     }
 
     draw(ctx) {
@@ -561,6 +648,27 @@ export class Enemy {
 
         ctx.restore();
 
+        // Draw boss projectiles
+        if (this.projectiles && this.projectiles.length > 0) {
+            for (const p of this.projectiles) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color || '#ff4444';
+                ctx.shadowColor = p.color || '#ff4444';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                // Bright core
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.globalAlpha = 0.8;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         // HP bar (only when damaged)
         if (this.hp < this.maxHp) {
             const barW = this.type === 'boss' ? 100 : 50;
@@ -575,6 +683,25 @@ export class Enemy {
             const hpColor = ratio > 0.5 ? '#44ff44' : (ratio > 0.25 ? '#ffaa44' : '#ff4444');
             ctx.fillStyle = hpColor;
             ctx.fillRect(barX, barY, barW * ratio, barH);
+            ctx.restore();
+        }
+
+        // Boss projectiles
+        for (const p of this.projectiles) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Inner bright core
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.8;
+            ctx.fill();
             ctx.restore();
         }
     }

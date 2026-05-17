@@ -1,4 +1,4 @@
-export const CHARACTER_IDS = ['reimu', 'marisa'];
+export const CHARACTER_IDS = ['reimu', 'marisa', 'yuyuko', 'youmu'];
 export const PORTRAIT_EXPRESSIONS = ['normal', 'happy', 'angry', 'sad'];
 
 export const SFX_FILES = [

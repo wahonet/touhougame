@@ -1,11 +1,15 @@
 export const Assets = {
     portraits: {
         reimu: {},
-        marisa: {}
+        marisa: {},
+        yuyuko: {},
+        youmu: {}
     },
     sprites: {
         reimu: { left: {}, right: {} },
-        marisa: { left: {}, right: {} }
+        marisa: { left: {}, right: {} },
+        yuyuko: { left: {}, right: {} },
+        youmu: { left: {}, right: {} }
     },
     effects: {
         spellcard: [],
@@ -25,9 +29,11 @@ export const Assets = {
     platformSmall: null,
     pickupCd: null,
     pickupHp: null,
-    defeated: { reimu: null, marisa: null },
+    defeated: { reimu: null, marisa: null, yuyuko: null, youmu: null },
     skillIcons: {
         reimu: [],
-        marisa: []
+        marisa: [],
+        yuyuko: [],
+        youmu: []
     }
 };

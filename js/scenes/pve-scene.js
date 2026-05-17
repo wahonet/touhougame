@@ -3,32 +3,40 @@
  * Player selects character, walks left to right, fights enemies, reaches the end.
  */
 import {
-    ARENA_WIDTH,
     FONT_FAMILY,
     MAX_HP,
     SCREEN_HEIGHT,
     SCREEN_WIDTH
 } from '../config/game-config.js';
-import { Assets } from '../core/asset-store.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { Game, createCamera } from '../core/game-state.js';
 import { registerBattleHooks } from '../core/battle-events.js';
 import { Fighter } from '../entities/fighter.js';
 import { Enemy } from '../entities/enemy.js';
+import { Pickup } from '../entities/pickup.js';
 import { checkHit } from '../systems/combat.js';
 import { rectsOverlap, resolveCollision } from '../systems/collision.js';
-import { getCharacterDefinition } from '../data/characters.js';
 import {
-    GROUND_Y,
-    PLATFORM_LAYOUT
+    GROUND_Y
 } from '../data/stage-data.js';
+import { PVE_LEVELS } from '../data/level-data.js';
 import {
-    PVE_LEVEL_WIDTH,
-    PVE_LEVEL_END_X,
-    PVE_PLATFORMS,
-    PVE_ENEMY_SPAWNS,
-    PVE_SPAWN_ZONES
-} from '../data/pve-level-data.js';
+    drawHUD,
+    drawSkillUI,
+    drawDamageNumbers,
+    drawCombo,
+    drawPowerBoost,
+    drawVictory,
+    drawDefeat
+} from './pve-hud.js';
+import {
+    drawMountains,
+    drawGround,
+    drawPlatforms,
+    createAmbientParticles,
+    drawAmbientEffects
+} from './pve-background.js';
+import { calcBeamRect } from '../entities/fighter-skills.js';
 
 export const PvEScene = {
     player: null,
@@ -44,17 +52,42 @@ export const PvEScene = {
     spawnedZones: new Set(),
     victoryTriggered: false,
     defeatTriggered: false,
+    pickups: [],
+    comboCount: 0,
+    comboTimer: 0,
+    damageNumbers: [],
+    killExplosions: [],
+    currentLevel: null,
+    levelConfig: null,
+    ambientParticles: [],
 
-    init() {
+    init(levelIndex) {
         const groundY = GROUND_Y;
+
+        // Load level config — default to first level (forest) for backward compat
+        this.currentLevel = levelIndex || 0;
+        this.levelConfig = PVE_LEVELS[this.currentLevel] || PVE_LEVELS[0];
+        const level = this.levelConfig;
+        const levelWidth = level.width;
+        const levelEndX = level.endX;
+
+        // Update global level width for Fighter boundary checks
+        Game.pveLevelWidth = levelWidth;
 
         // Create player at level start
         this.player = new Fighter(Game.playerChar, 200, groundY, 'right', false);
         this.player.hp = MAX_HP;
 
+        this._platformTime = 0;
+        this._playerPlatform = null;
         this.enemies = [];
-        this.platforms = PVE_PLATFORMS.map(p => ({
-            x: p.x, y: p.y, w: p.w, h: p.h, type: p.type
+        this.platforms = level.platforms.map(p => ({
+            x: p.x, y: p.y, w: p.w, h: p.h, type: p.type,
+            moveType: p.moveType || 'static',
+            moveRange: p.moveRange || 0,
+            moveSpeed: p.moveSpeed || 0,
+            _origX: p.x,
+            _origY: p.y
         }));
         this.particles = [];
         this.shakeAmount = 0;
@@ -63,6 +96,11 @@ export const PvEScene = {
         this.spawnedZones = new Set();
         this.victoryTriggered = false;
         this.defeatTriggered = false;
+        this.pickups = [];
+        this.comboCount = 0;
+        this.comboTimer = 0;
+        this.damageNumbers = [];
+        this.killExplosions = [];
 
         // Camera follows player
         Game.camera = createCamera();
@@ -82,7 +120,7 @@ export const PvEScene = {
         this.parallaxStars = [];
         for (let i = 0; i < 150; i++) {
             this.parallaxStars.push({
-                x: Math.random() * PVE_LEVEL_WIDTH * 2,
+                x: Math.random() * levelWidth * 2,
                 y: Math.random() * 450,
                 size: 0.5 + Math.random() * 2,
                 brightness: 0.2 + Math.random() * 0.6,
@@ -90,6 +128,10 @@ export const PvEScene = {
             });
         }
         this.mountainSeed = Math.random() * 1000;
+
+        // Generate ambient particles (level theme effects)
+        this.ambientParticles = createAmbientParticles(this.currentLevel, levelWidth);
+        this.ambientParticles = createAmbientParticles(this.currentLevel, level.width);
 
         if (typeof AudioManager !== 'undefined') AudioManager.playBGM('bgm_battle');
     },
@@ -100,12 +142,13 @@ export const PvEScene = {
         const player = this.player;
 
         // --- Enemy spawning based on player position ---
-        for (const zone of PVE_SPAWN_ZONES) {
+        const level = this.levelConfig;
+        for (const zone of level.spawnZones) {
             if (this.spawnedZones.has(zone.triggerX)) continue;
             if (player.cx >= zone.triggerX - 200) {
                 this.spawnedZones.add(zone.triggerX);
                 for (const idx of zone.spawnIndices) {
-                    const spawn = PVE_ENEMY_SPAWNS[idx];
+                    const spawn = level.enemies[idx];
                     const ey = spawn.y === 'ground' ? GROUND_Y : spawn.y;
                     const enemy = new Enemy(
                         spawn.type,
@@ -120,11 +163,58 @@ export const PvEScene = {
             }
         }
 
+        // --- Spawn pickups from killed enemies ---
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (enemy.state === 'dead' && enemy.deathTimer <= 0 && !enemy._droppedPickup) {
+                enemy._droppedPickup = true;
+                // 30% chance to drop a pickup
+                if (Math.random() < 0.3) {
+                    const types = ['hp', 'hp', 'cd', 'power', 'power'];
+                    // Boss always drops bomb
+                    const pickupType = enemy.type === 'boss' ? 'bomb' : types[Math.floor(Math.random() * types.length)];
+                    this.pickups.push(new Pickup(pickupType, enemy.cx, enemy.cy - 20));
+                }
+            }
+        }
+
+        // --- Update moving platforms ---
+        this._platformTime += dt;
+        const platTime = this._platformTime;
+        // Track which platform player is standing on (check BEFORE position update)
+        const pHurt = player.getHurtbox();
+        this._playerPlatform = null;
+        if (pHurt && player.isOnGround) {
+            for (const plat of this.platforms) {
+                if (pHurt.x + pHurt.w > plat.x && pHurt.x < plat.x + plat.w &&
+                    pHurt.y + pHurt.h >= plat.y - 4 && pHurt.y + pHurt.h <= plat.y + 8) {
+                    this._playerPlatform = plat;
+                    break;
+                }
+            }
+        }
+
+        for (const plat of this.platforms) {
+            if (plat.moveType === 'static') continue;
+            const oldX = plat.x;
+            const oldY = plat.y;
+            if (plat.moveType === 'horizontal') {
+                plat.x = plat._origX + Math.sin(platTime * plat.moveSpeed) * plat.moveRange;
+            } else if (plat.moveType === 'vertical') {
+                plat.y = plat._origY + Math.sin(platTime * plat.moveSpeed) * (-plat.moveRange);
+            }
+            // Carry player with platform delta
+            if (this._playerPlatform === plat) {
+                player.cx += (plat.x - oldX);
+                player.cy += (plat.y - oldY);
+            }
+        }
+
         // --- Update camera (follows player only) ---
         Game.camera.targetX = player.cx - SCREEN_WIDTH * 0.35;
-        Game.camera.targetX = Math.max(0, Math.min(PVE_LEVEL_WIDTH - SCREEN_WIDTH, Game.camera.targetX));
+        Game.camera.targetX = Math.max(0, Math.min(level.width - SCREEN_WIDTH, Game.camera.targetX));
         Game.camera.x += (Game.camera.targetX - Game.camera.x) * 0.1;
-        Game.camera.x = Math.max(0, Math.min(PVE_LEVEL_WIDTH - SCREEN_WIDTH, Game.camera.x));
+        Game.camera.x = Math.max(0, Math.min(level.width - SCREEN_WIDTH, Game.camera.x));
 
         // --- Update player ---
         const keys = Game.keys;
@@ -146,13 +236,31 @@ export const PvEScene = {
                 }
             }
 
+            // Boss projectile hits player
+            if (enemy.projectiles && enemy.projectiles.length > 0) {
+                const hurtbox = player.getHurtbox();
+                for (let j = enemy.projectiles.length - 1; j >= 0; j--) {
+                    const p = enemy.projectiles[j];
+                    const bBox = { x: p.x - p.radius, y: p.y - p.radius, w: p.radius * 2, h: p.radius * 2 };
+                    if (rectsOverlap(bBox, hurtbox)) {
+                        player.damage(p.damage);
+                        enemy.projectiles.splice(j, 1);
+                        if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_hit');
+                        this._spawnHitParticles(p.x, p.y, p.color);
+                    }
+                }
+            }
+
             // Player attack hits enemy (melee)
             if (player.state === 'attack' && !player._atkHit) {
                 const pHitbox = player.getHitbox();
                 const eHurtbox = enemy.getHurtbox();
                 if (pHitbox && rectsOverlap(pHitbox, eHurtbox)) {
                     player._atkHit = true;
-                    enemy.damage(20);
+                    const dmg = (player._powerMultiplier || 1) * 20;
+                    enemy.damage(dmg);
+                    this._addDamageNumber(enemy.cx, enemy.cy - enemy.height, dmg);
+                    this._addCombo();
                     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_hit');
                 }
             }
@@ -161,10 +269,37 @@ export const PvEScene = {
             this._checkPlayerSkillsHitEnemy(player, enemy);
 
             // Remove dead enemies after fade
-            if (enemy.state === 'dead' && enemy.deathTimer <= 0) {
+            if (enemy.state === 'dead' && enemy.deathTimer <= 0 && !enemy._counted) {
+                enemy._counted = true;
                 this.score += enemy.score;
                 this.killCount++;
+                this._addKillExplosion(enemy.cx, enemy.cy - enemy.height / 2);
+            }
+            if (enemy.state === 'dead' && enemy.deathTimer <= 0) {
                 this.enemies.splice(i, 1);
+            }
+        }
+
+        // --- Boss projectile → player collision ---
+        for (const enemy of this.enemies) {
+            if (!enemy.projectiles || enemy.projectiles.length === 0) continue;
+            const hurtbox = player.getHurtbox();
+            if (!hurtbox) continue;
+            for (let j = enemy.projectiles.length - 1; j >= 0; j--) {
+                const p = enemy.projectiles[j];
+                const bulletBox = {
+                    x: p.x - p.radius,
+                    y: p.y - p.radius,
+                    w: p.radius * 2,
+                    h: p.radius * 2
+                };
+                if (rectsOverlap(bulletBox, hurtbox)) {
+                    player.damage(p.damage);
+                    this._addDamageNumber(player.cx, player.cy - 60, p.damage);
+                    this.shakeAmount = Math.min(8, this.shakeAmount + 3);
+                    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_hit');
+                    enemy.projectiles.splice(j, 1);
+                }
             }
         }
 
@@ -184,8 +319,55 @@ export const PvEScene = {
             return p.life > 0;
         });
 
+        // --- Update pickups ---
+        for (let i = this.pickups.length - 1; i >= 0; i--) {
+            const pickup = this.pickups[i];
+            pickup.update(dt);
+            // Check collection
+            if (!pickup.collected) {
+                const hurtbox = player.getHurtbox();
+                const pickupBox = pickup.getHurtbox();
+                if (rectsOverlap(hurtbox, pickupBox)) {
+                    pickup.collect(player, { enemies: this.enemies });
+                }
+            }
+            if (pickup.collected) {
+                this.pickups.splice(i, 1);
+            }
+        }
+
+        // --- Combo timer ---
+        if (this.comboTimer > 0) {
+            this.comboTimer -= dt;
+            if (this.comboTimer <= 0) {
+                this.comboCount = 0;
+            }
+        }
+
+        // --- Power boost timer ---
+        if (player._powerBoost && player._powerBoost > 0) {
+            player._powerBoost -= dt;
+            if (player._powerBoost <= 0) {
+                player._powerBoost = 0;
+                player._powerMultiplier = 1;
+            }
+        }
+
+        // --- Update damage numbers ---
+        this.damageNumbers = this.damageNumbers.filter(d => {
+            d.y -= 1.5;
+            d.life -= dt;
+            return d.life > 0;
+        });
+
+        // --- Update kill explosions ---
+        this.killExplosions = this.killExplosions.filter(e => {
+            e.life -= dt;
+            return e.life > 0;
+        });
+
         // --- Victory check ---
-        if (player.cx >= PVE_LEVEL_END_X && !this.victoryTriggered && !this.defeatTriggered) {
+        if (player.cx >= level.endX && !this.victoryTriggered && !this.defeatTriggered) {
             // Check if boss is dead
             const bossAlive = this.enemies.some(e => e.type === 'boss' && e.state !== 'dead');
             if (!bossAlive) {
@@ -302,6 +484,111 @@ export const PvEScene = {
                 }
             }
         }
+
+        // ---- YUYUKO SKILLS ----
+
+        // Soul Butterfly (Yuyuko skill 0) - spread projectiles
+        const yuyukoSkill0 = player.skills[0];
+        if (player.name === 'yuyuko' && yuyukoSkill0.active && yuyukoSkill0.data && yuyukoSkill0.data.projectiles) {
+            for (const proj of yuyukoSkill0.data.projectiles) {
+                if (!proj.active || proj.hitTarget) continue;
+                const hurtbox = enemy.getHurtbox();
+                if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
+                    proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
+                    proj.hitTarget = true;
+                    proj.active = false;
+                    enemy.damage(12);
+                    yuyukoSkill0.data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
+                }
+            }
+        }
+
+        // Death Invitation (Yuyuko skill 1) - homing orb
+        const yuyukoSkill1 = player.skills[1];
+        if (player.name === 'yuyuko' && yuyukoSkill1.active && yuyukoSkill1.data && yuyukoSkill1.data.orb) {
+            const orb = yuyukoSkill1.data.orb;
+            if (orb.active && !orb.hit) {
+                const hurtbox = enemy.getHurtbox();
+                if (orb.x > hurtbox.x && orb.x < hurtbox.x + hurtbox.w &&
+                    orb.y > hurtbox.y && orb.y < hurtbox.y + hurtbox.h) {
+                    orb.hit = true;
+                    orb.active = false;
+                    enemy.damage(100);
+                    yuyukoSkill1.data.hitEffects.push({ x: orb.x, y: orb.y, timer: 30 });
+                }
+            }
+        }
+
+        // Cherry Blossom Storm (Yuyuko skill 3) - AoE tick
+        const yuyukoSkill3 = player.skills[3];
+        if (player.name === 'yuyuko' && yuyukoSkill3.active && yuyukoSkill3.data) {
+            const data = yuyukoSkill3.data;
+            if (data.tickTimer !== undefined && data.tickTimer >= data.tickInterval) {
+                const hurtbox = enemy.getHurtbox();
+                const ecx = hurtbox.x + hurtbox.w / 2;
+                const ecy = hurtbox.y + hurtbox.h / 2;
+                const dx = ecx - data.cx;
+                const dy = ecy - data.cy;
+                if (dx * dx + dy * dy <= data.radius * data.radius) {
+                    if (!data._hitEnemies) data._hitEnemies = new Set();
+                    const tickKey = `${enemy.cx}_${enemy.cy}_${Math.floor(data.timer / data.tickInterval)}`;
+                    if (!data._hitEnemies.has(tickKey)) {
+                        data._hitEnemies.add(tickKey);
+                        enemy.damage(8);
+                    }
+                }
+            }
+        }
+
+        // ---- YOUMU SKILLS ----
+
+        // Roukanken (Youmu skill 0) - wide slash
+        const youmuSkill0 = player.skills[0];
+        if (player.name === 'youmu' && youmuSkill0.active && youmuSkill0.data && !youmuSkill0.data.hitTarget) {
+            const data = youmuSkill0.data;
+            const slashRect = { x: data.slashX - data.width / 2, y: data.slashY - data.height / 2, w: data.width, h: data.height };
+            const hurtbox = enemy.getHurtbox();
+            if (rectsOverlap(slashRect, hurtbox)) {
+                youmuSkill0.data.hitTarget = true;
+                enemy.damage(50);
+            }
+        }
+
+        // Hakurouken Slash (Youmu skill 1) - dash hit
+        const youmuSkill1 = player.skills[1];
+        if (player.name === 'youmu' && youmuSkill1.active && youmuSkill1.data && !youmuSkill1.data.hitTarget) {
+            const data = youmuSkill1.data;
+            const dashRect = {
+                x: player.cx - 30,
+                y: player.cy - player.hurtboxH,
+                w: 60,
+                h: player.hurtboxH
+            };
+            const hurtbox = enemy.getHurtbox();
+            if (rectsOverlap(dashRect, hurtbox)) {
+                youmuSkill1.data.hitTarget = true;
+                enemy.damage(80);
+            }
+        }
+
+        // Slash of Present World (Youmu skill 3) - beam
+        const youmuSkill3 = player.skills[3];
+        if (player.name === 'youmu' && youmuSkill3.active && youmuSkill3.data && youmuSkill3.data.phase === 'fire') {
+            const data = youmuSkill3.data;
+            const beamRect = calcBeamRect(player, data.beamDir, 48, 800);
+            if (beamRect) {
+                const hurtbox = enemy.getHurtbox();
+                if (rectsOverlap(beamRect, hurtbox)) {
+                    if (!data._hitEnemies) data._hitEnemies = new Set();
+                    const tickIdx = data.damageTicks.filter(Boolean).length - 1;
+                    const tickKey = `${enemy.cx}_${enemy.cy}_${tickIdx}`;
+                    if (!data._hitEnemies.has(tickKey)) {
+                        data._hitEnemies.add(tickKey);
+                        enemy.damage(40);
+                    }
+                }
+            }
+        }
     },
 
     draw(ctx) {
@@ -310,12 +597,11 @@ export const PvEScene = {
         const cam = Game.camera.x;
 
         // ========== PARALLAX BACKGROUND ==========
+        const theme = this.levelConfig.theme;
         const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
-        skyGrad.addColorStop(0, '#050510');
-        skyGrad.addColorStop(0.2, '#0a0a2e');
-        skyGrad.addColorStop(0.4, '#1a1050');
-        skyGrad.addColorStop(0.7, '#2a1a5a');
-        skyGrad.addColorStop(1, '#3a2a6a');
+        skyGrad.addColorStop(0, theme.skyTop);
+        skyGrad.addColorStop(0.2, theme.skyMid);
+        skyGrad.addColorStop(1, theme.skyBot);
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, W, groundY);
 
@@ -349,9 +635,12 @@ export const PvEScene = {
         // Mountains (parallax 0.15)
         ctx.save();
         const mtnOffset = -cam * 0.15;
-        this._drawMountains(ctx, mtnOffset, groundY, 0.7, 'rgba(15, 10, 30, 0.6)', 120, 0.003);
-        this._drawMountains(ctx, mtnOffset * 1.3, groundY, 0.85, 'rgba(20, 15, 40, 0.7)', 90, 0.005);
+        drawMountains(ctx, mtnOffset, groundY, 0.7, theme.mountainColor1, 120, 0.003);
+        drawMountains(ctx, mtnOffset * 1.3, groundY, 0.85, theme.mountainColor2, 90, 0.005);
         ctx.restore();
+
+        // Ambient particles (parallax between mountains and world)
+        drawAmbientEffects(ctx, this.ambientParticles, this.currentLevel, cam, 0, groundY);
 
         // ========== WORLD SPACE ==========
         ctx.save();
@@ -365,14 +654,19 @@ export const PvEScene = {
         ctx.translate(-cam, 0);
 
         // Ground
-        this._drawGround(ctx, groundY);
+        drawGround(ctx, groundY, this.levelConfig);
 
         // Platforms
-        this._drawPlatforms(ctx);
+        drawPlatforms(ctx, this.platforms);
 
         // Enemies
         for (const enemy of this.enemies) {
             enemy.draw(ctx);
+        }
+
+        // Pickups
+        for (const pickup of this.pickups) {
+            pickup.draw(ctx);
         }
 
         // Player
@@ -384,9 +678,13 @@ export const PvEScene = {
         // Particles
         this._drawParticles(ctx);
 
+        // Damage numbers (world space)
+        drawDamageNumbers(ctx, this.damageNumbers, cam);
+
         // Victory flag at end
-        if (PVE_LEVEL_END_X) {
-            const flagX = PVE_LEVEL_END_X;
+        const endX = this.levelConfig.endX;
+        if (endX) {
+            const flagX = endX;
             ctx.save();
             // Flag pole
             ctx.strokeStyle = '#ccaa66';
@@ -418,342 +716,20 @@ export const PvEScene = {
         ctx.restore();
 
         // ========== HUD (screen space) ==========
-        this._drawHUD(ctx);
+        drawHUD(ctx, this.player, this.levelConfig, this.score, this.killCount);
+
+        // Combo counter (screen space)
+        drawCombo(ctx, this.comboCount, this.comboTimer);
+
+        // Power boost bar (screen space)
+        if (this.player) drawPowerBoost(ctx, this.player);
 
         // Victory / Defeat overlay
         if (this.victoryTriggered) {
-            this._drawVictory(ctx);
+            drawVictory(ctx, this.player, this.levelConfig, this.score, this.killCount, this.currentLevel);
         }
         if (this.defeatTriggered && this.player && this.player.state === 'dead') {
-            this._drawDefeat(ctx);
-        }
-    },
-
-    // ========== HUD ==========
-
-    _drawHUD(ctx) {
-        const player = this.player;
-        if (!player) return;
-
-        const character = getCharacterDefinition(player.name);
-        const barW = 300, barH = 24;
-        const hpRatio = player.hp / MAX_HP;
-
-        // Background panel
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(15, 12, 350, 50);
-
-        // Character name
-        ctx.font = `bold 16px ${FONT_FAMILY}`;
-        ctx.fillStyle = character.accentColor;
-        ctx.textAlign = 'left';
-        ctx.fillText(character.uiName, 25, 30);
-
-        // HP bar
-        const barX = 25, barY = 38;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(barX, barY, barW, barH);
-
-        let hpColor = '#44ff66';
-        if (hpRatio < 0.5) hpColor = '#ffaa44';
-        if (hpRatio < 0.25) hpColor = '#ff4444';
-
-        ctx.fillStyle = hpColor;
-        ctx.fillRect(barX, barY, barW * hpRatio, barH);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(barX, barY, barW, barH);
-
-        ctx.font = `bold 12px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${Math.max(0, player.hp)} / ${MAX_HP}`, barX + barW / 2, barY + 16);
-
-        // Score & kills (top right)
-        ctx.textAlign = 'right';
-        ctx.font = `bold 20px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#ffcc00';
-        ctx.fillText(`Score: ${this.score}`, SCREEN_WIDTH - 25, 30);
-        ctx.font = `16px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText(`Kills: ${this.killCount}`, SCREEN_WIDTH - 25, 52);
-
-        // Progress bar (bottom)
-        const progressW = SCREEN_WIDTH - 100;
-        const progressH = 8;
-        const progressX = 50;
-        const progressY = SCREEN_HEIGHT - 22;
-        const progress = Math.min(1, this.player.cx / PVE_LEVEL_END_X);
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.fillRect(progressX, progressY, progressW, progressH);
-        ctx.fillStyle = '#66ccff';
-        ctx.fillRect(progressX, progressY, progressW * progress, progressH);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.strokeRect(progressX, progressY, progressW, progressH);
-
-        // Player dot on progress bar
-        const dotX = progressX + progressW * progress;
-        ctx.fillStyle = character.accentColor;
-        ctx.shadowColor = character.accentColor;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(dotX, progressY + progressH / 2, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Controls hint
-        ctx.font = `13px ${FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillText('A/D: Move  W/Space: Jump  J: Attack  1-4: Skills  R: Restart', SCREEN_WIDTH / 2, SCREEN_HEIGHT - 4);
-
-        // ========== SKILL UI ==========
-        this._drawSkillUI(ctx, player);
-
-        ctx.restore();
-    },
-
-    // ========== SKILL UI (same style as PvP BattleScene) ==========
-
-    _drawSkillUI(ctx, fighter) {
-        if (!fighter) return;
-
-        const boxSize = 46;
-        const gap = 6;
-        const radius = boxSize / 2 - 2;
-        const startX = 25;
-        const startY = 68;
-
-        const character = getCharacterDefinition(fighter.name);
-        const colors = character.skillColors;
-        const icons = Assets.skillIcons[fighter.name] || [];
-
-        for (let i = 0; i < 4; i++) {
-            const skill = fighter.skills[i];
-            const bx = startX + i * (boxSize + gap);
-            const by = startY;
-            const cx = bx + boxSize / 2;
-            const cy = by + boxSize / 2;
-
-            const isReady = skill.cooldown <= 0 && !skill.active;
-            const isActive = skill.active;
-            const onCooldown = skill.cooldown > 0;
-
-            ctx.save();
-
-            // Circular dark background
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fill();
-
-            // Draw icon image clipped to circle
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.clip();
-
-            const iconImg = icons[i];
-            if (iconImg) {
-                if (onCooldown) ctx.globalAlpha = 0.4;
-                ctx.drawImage(iconImg, cx - radius, cy - radius, radius * 2, radius * 2);
-                ctx.globalAlpha = 1;
-            } else {
-                ctx.fillStyle = colors[i];
-                ctx.globalAlpha = isReady ? 0.8 : 0.3;
-                ctx.fill();
-                ctx.globalAlpha = 1;
-                ctx.font = `bold 10px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#ffffff';
-                ctx.fillText(skill.name.substring(0, 2), cx, cy);
-            }
-
-            ctx.restore();
-            ctx.save();
-
-            // Circular sweep cooldown overlay
-            if (onCooldown) {
-                const cdRatio = skill.cooldown / skill.maxCooldown;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.arc(cx, cy, radius + 1, -Math.PI / 2, -Math.PI / 2 + cdRatio * Math.PI * 2, false);
-                ctx.closePath();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-                ctx.fill();
-
-                ctx.font = `bold 14px ${FONT_FAMILY}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillText(`${skill.cooldown.toFixed(1)}`, cx, cy);
-            }
-
-            // Border
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.closePath();
-
-            if (isActive) {
-                const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
-                ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
-                ctx.lineWidth = 3;
-                ctx.shadowColor = '#ffffff';
-                ctx.shadowBlur = 10;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-            } else if (isReady) {
-                ctx.strokeStyle = colors[i];
-                ctx.lineWidth = 2;
-                ctx.shadowColor = colors[i];
-                ctx.shadowBlur = 8;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-            } else {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-
-            // Key number badge
-            const keyNum = i + 1;
-            const badgeR = 8;
-            const badgeCx = bx + boxSize - badgeR - 1;
-            const badgeCy = by + badgeR + 1;
-            ctx.beginPath();
-            ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fill();
-            ctx.font = `bold 11px ${FONT_FAMILY}`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = isReady ? '#ffffff' : 'rgba(255, 255, 255, 0.5)';
-            ctx.fillText(`${keyNum}`, badgeCx, badgeCy);
-
-            ctx.restore();
-        }
-    },
-
-    _drawVictory(ctx) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-        ctx.font = `bold 64px ${FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#ffcc00';
-        ctx.shadowBlur = 40;
-        ctx.fillStyle = '#ffcc00';
-        ctx.fillText('STAGE CLEAR!', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50);
-
-        ctx.shadowBlur = 0;
-        ctx.font = `bold 28px ${FONT_FAMILY}`;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(`Score: ${this.score}   Kills: ${this.killCount}`, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
-
-        ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillText('Press R to return', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 70);
-        ctx.restore();
-    },
-
-    _drawDefeat(ctx) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-        ctx.font = `bold 56px ${FONT_FAMILY}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = '#ff4444';
-        ctx.shadowBlur = 30;
-        ctx.fillStyle = '#ff4444';
-        ctx.fillText('GAME OVER', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 30);
-
-        ctx.shadowBlur = 0;
-        ctx.font = `24px ${FONT_FAMILY}`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillText(`Score: ${this.score}   Kills: ${this.killCount}`, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 20);
-
-        ctx.font = `20px ${FONT_FAMILY}`;
-        ctx.fillText('Press R to return', SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 60);
-        ctx.restore();
-    },
-
-    // ========== BACKGROUND HELPERS (same pattern as BattleScene) ==========
-
-    _drawMountains(ctx, offset, groundY, heightFactor, color, maxHeight, freq) {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(offset - 50, groundY);
-        for (let x = -50; x < SCREEN_WIDTH + 100; x += 4) {
-            const worldX = x - offset;
-            const h = (Math.sin(worldX * freq) * 0.5 + 0.5) * maxHeight * heightFactor +
-                      (Math.sin(worldX * freq * 2.7 + 1) * 0.3 + 0.3) * maxHeight * 0.3 * heightFactor;
-            ctx.lineTo(x + offset, groundY - h);
-        }
-        ctx.lineTo(SCREEN_WIDTH + 100 + offset, groundY);
-        ctx.closePath();
-        ctx.fill();
-    },
-
-    _drawGround(ctx, groundY) {
-        const groundGrad = ctx.createLinearGradient(0, groundY, 0, SCREEN_HEIGHT);
-        groundGrad.addColorStop(0, '#4a6a2a');
-        groundGrad.addColorStop(0.15, '#3a5a1a');
-        groundGrad.addColorStop(0.5, '#2a4a10');
-        groundGrad.addColorStop(1, '#1a3a08');
-        ctx.fillStyle = groundGrad;
-        ctx.fillRect(0, groundY, PVE_LEVEL_WIDTH, SCREEN_HEIGHT - groundY);
-
-        // Ground surface glow
-        const surfGlow = ctx.createLinearGradient(0, groundY - 4, 0, groundY + 8);
-        surfGlow.addColorStop(0, 'rgba(100, 200, 60, 0.3)');
-        surfGlow.addColorStop(1, 'rgba(60, 120, 30, 0)');
-        ctx.fillStyle = surfGlow;
-        ctx.fillRect(0, groundY - 4, PVE_LEVEL_WIDTH, 12);
-
-        // Ground line
-        ctx.strokeStyle = 'rgba(100, 180, 60, 0.6)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(0, groundY);
-        ctx.lineTo(PVE_LEVEL_WIDTH, groundY);
-        ctx.stroke();
-    },
-
-    _drawPlatforms(ctx) {
-        for (const plat of this.platforms) {
-            const asset = plat.type === 'large' ? Assets.platform : Assets.platformSmall;
-            if (asset) {
-                ctx.save();
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-                ctx.beginPath();
-                ctx.ellipse(plat.x + plat.w / 2, plat.y + plat.h + 6, plat.w * 0.45, 8, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-                ctx.drawImage(asset, plat.x, plat.y, plat.w, plat.h);
-            } else {
-                ctx.save();
-                const platGrad = ctx.createLinearGradient(0, plat.y, 0, plat.y + plat.h);
-                platGrad.addColorStop(0, plat.type === 'large' ? 'rgba(120, 90, 55, 0.9)' : 'rgba(100, 80, 50, 0.85)');
-                platGrad.addColorStop(1, plat.type === 'large' ? 'rgba(60, 45, 30, 0.8)' : 'rgba(50, 40, 28, 0.75)');
-                ctx.fillStyle = platGrad;
-                ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
-                ctx.strokeStyle = 'rgba(180, 150, 100, 0.5)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(plat.x + 3, plat.y + 1);
-                ctx.lineTo(plat.x + plat.w - 3, plat.y + 1);
-                ctx.stroke();
-                ctx.restore();
-            }
+            drawDefeat(ctx, this.score, this.killCount);
         }
     },
 
@@ -770,6 +746,50 @@ export const PvEScene = {
                 size: 2 + Math.random() * 3,
                 color: color || '#ffcc44'
             });
+        }
+    },
+
+    _addDamageNumber(x, y, amount) {
+        this.damageNumbers.push({
+            x, y, amount,
+            life: 1.0,
+            color: amount >= 50 ? '#ffdd44' : '#ffffff'
+        });
+    },
+
+    _addCombo() {
+        this.comboCount++;
+        this.comboTimer = 2;
+    },
+
+    _addKillExplosion(x, y) {
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const speed = 2 + Math.random() * 3;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                life: 0.6,
+                maxLife: 0.6,
+                size: 4 + Math.random() * 4,
+                color: ['#ffcc44', '#ff6644', '#ffaa22', '#ffffff'][Math.floor(Math.random() * 4)]
+            });
+        }
+    },
+
+    _drawDamageNumbers(ctx, cam) {
+        for (const d of this.damageNumbers) {
+            ctx.save();
+            ctx.globalAlpha = d.life;
+            ctx.font = `bold ${16 + (d.amount >= 50 ? 4 : 0)}px ${FONT_FAMILY}`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = d.color;
+            ctx.shadowColor = d.color;
+            ctx.shadowBlur = 4;
+            ctx.fillText(`-${d.amount}`, d.x, d.y);
+            ctx.shadowBlur = 0;
+            ctx.restore();
         }
     },
 

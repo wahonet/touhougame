@@ -73,6 +73,7 @@ async function init() {
         canvas: Game.canvas,
         selectScene: SelectScene,
         dialogueScene: DialogueScene,
+        pveScene: PvEScene,
         resetGame,
         audioManager: AudioManager
     });

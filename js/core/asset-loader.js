@@ -66,7 +66,279 @@ async function loadPortraits() {
                 Assets.portraits[char][expr] = scaleImage(img, 500);
             }
         }
+        // Fallback: generate programmatic portrait if none loaded
+        if (!Assets.portraits[char].normal) {
+            Assets.portraits[char].normal = generateFallbackPortrait(char);
+            Assets.portraits[char].happy = Assets.portraits[char].normal;
+            Assets.portraits[char].angry = Assets.portraits[char].normal;
+            Assets.portraits[char].sad = Assets.portraits[char].normal;
+        }
     }
+}
+
+/**
+ * Generate a simple programmatic portrait canvas for characters without image assets
+ */
+function generateFallbackPortrait(charName) {
+    const w = 400, h = 500;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    const palettes = {
+        reimu: { hair: '#442222', outfit: '#ff3344', ribbon: '#ffffff', skin: '#ffe4c4' },
+        marisa: { hair: '#ffdd44', outfit: '#222222', ribbon: '#ffffff', skin: '#ffe4c4' },
+        yuyuko: { hair: '#ccaaff', outfit: '#ff88cc', ribbon: '#4466cc', skin: '#ffeedd' },
+        youmu: { hair: '#aaddcc', outfit: '#44ddaa', ribbon: '#88ccff', skin: '#ffeedd' }
+    };
+    const p = palettes[charName] || palettes.reimu;
+
+    // Background glow
+    const grad = ctx.createRadialGradient(w / 2, h / 2 - 30, 50, w / 2, h / 2, 250);
+    grad.addColorStop(0, p.outfit + '44');
+    grad.addColorStop(1, 'rgba(10,5,20,0.9)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Body (simple dress shape)
+    ctx.fillStyle = p.outfit;
+    ctx.beginPath();
+    ctx.moveTo(w / 2 - 50, h / 2 + 20);
+    ctx.lineTo(w / 2 - 80, h - 20);
+    ctx.lineTo(w / 2 + 80, h - 20);
+    ctx.lineTo(w / 2 + 50, h / 2 + 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = p.skin;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2 - 40, 55, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = p.hair;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2 - 55, 58, Math.PI * 0.8, Math.PI * 2.2);
+    ctx.fill();
+    // Side hair
+    ctx.fillRect(w / 2 - 60, h / 2 - 40, 20, 80);
+    ctx.fillRect(w / 2 + 40, h / 2 - 40, 20, 80);
+
+    // Eyes
+    ctx.fillStyle = '#333333';
+    ctx.beginPath();
+    ctx.ellipse(w / 2 - 18, h / 2 - 35, 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(w / 2 + 18, h / 2 - 35, 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye highlights
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(w / 2 - 16, h / 2 - 38, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w / 2 + 20, h / 2 - 38, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mouth
+    ctx.strokeStyle = '#cc8866';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2 - 20, 8, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    // Character-specific accessory
+    if (charName === 'reimu') {
+        // Ribbon (bow)
+        ctx.fillStyle = '#ff2244';
+        ctx.beginPath();
+        ctx.moveTo(w / 2, h / 2 - 90);
+        ctx.lineTo(w / 2 - 25, h / 2 - 105);
+        ctx.lineTo(w / 2, h / 2 - 95);
+        ctx.lineTo(w / 2 + 25, h / 2 - 105);
+        ctx.closePath();
+        ctx.fill();
+    } else if (charName === 'marisa') {
+        // Witch hat
+        ctx.fillStyle = '#222222';
+        ctx.beginPath();
+        ctx.moveTo(w / 2, h / 2 - 140);
+        ctx.lineTo(w / 2 - 50, h / 2 - 70);
+        ctx.lineTo(w / 2 + 50, h / 2 - 70);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#ffdd44';
+        ctx.fillRect(w / 2 - 55, h / 2 - 75, 110, 8);
+    } else if (charName === 'yuyuko') {
+        // Cherry blossom crown
+        ctx.fillStyle = '#ff88cc';
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+            const bx = w / 2 + Math.cos(angle) * 30;
+            const by = h / 2 - 80 + Math.sin(angle) * 15;
+            ctx.beginPath();
+            ctx.arc(bx, by, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.fillStyle = '#ffccdd';
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+            const bx = w / 2 + Math.cos(angle) * 30;
+            const by = h / 2 - 80 + Math.sin(angle) * 15;
+            ctx.beginPath();
+            ctx.arc(bx, by, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    } else if (charName === 'youmu') {
+        // Ghost half (floating spirit)
+        ctx.fillStyle = 'rgba(200, 230, 255, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(w / 2 + 70, h / 2 - 30, 20, 30, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(w / 2 + 65, h / 2 - 38, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(w / 2 + 75, h / 2 - 38, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Sword (Myon)
+        ctx.strokeStyle = '#aaddcc';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - 60, h / 2 + 10);
+        ctx.lineTo(w / 2 - 100, h / 2 - 40);
+        ctx.stroke();
+    }
+
+    // Name label
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = p.outfit;
+    ctx.shadowBlur = 10;
+    const names = { reimu: '灵梦', marisa: '魔理沙', yuyuko: '幽幽子', youmu: '妖梦' };
+    ctx.fillText(names[charName] || charName, w / 2, h - 30);
+    ctx.shadowBlur = 0;
+
+    return canvas;
+}
+
+function getFallbackPalette(charName) {
+    const palettes = {
+        reimu: { body: '#ff3344', trim: '#ffffff', hair: '#442222', accent: '#ff99aa' },
+        marisa: { body: '#222222', trim: '#ffdd44', hair: '#ffdd44', accent: '#ffffff' },
+        yuyuko: { body: '#ff88cc', trim: '#ccaaff', hair: '#ddbbff', accent: '#ffccdd' },
+        youmu: { body: '#44ddaa', trim: '#ddffff', hair: '#aaddcc', accent: '#88ccff' }
+    };
+    return palettes[charName] || palettes.reimu;
+}
+
+function generateFallbackActionSprite(charName, pose, frameIndex = 0) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = SPRITE_DISPLAY_H;
+    const ctx = canvas.getContext('2d');
+    const p = getFallbackPalette(charName);
+    const cx = canvas.width / 2;
+    const groundY = canvas.height - 4;
+    const bob = pose === 'walk' ? Math.sin(frameIndex * Math.PI / 2) * 3 : 0;
+    const attackReach = pose === 'attack' ? 22 : 0;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY, 24, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = p.body;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, 58 + bob);
+    ctx.lineTo(cx - 28, groundY - 12);
+    ctx.lineTo(cx + 28, groundY - 12);
+    ctx.lineTo(cx + 20, 58 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = p.trim;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, 68 + bob);
+    ctx.lineTo(cx + 14, 68 + bob);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffe6cc';
+    ctx.beginPath();
+    ctx.arc(cx, 40 + bob, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = p.hair;
+    ctx.beginPath();
+    ctx.arc(cx, 34 + bob, 18, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = p.accent;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 8, 72 + bob);
+    ctx.lineTo(cx - 20 - bob, groundY - 12);
+    ctx.moveTo(cx + 8, 72 + bob);
+    ctx.lineTo(cx + 20 + bob, groundY - 12);
+    ctx.stroke();
+
+    ctx.strokeStyle = p.trim;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx + 14, 70 + bob);
+    ctx.lineTo(cx + 28 + attackReach, 60 + bob);
+    ctx.stroke();
+
+    if (pose === 'attack') {
+        ctx.strokeStyle = p.accent;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(cx + 28, 60 + bob);
+        ctx.lineTo(cx + 52, 48 + bob);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = p.accent;
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(charName.slice(0, 2).toUpperCase(), cx, groundY - 28);
+
+    return canvas;
+}
+
+function generateFallbackSkillIcon(charName, index) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    const p = getFallbackPalette(charName);
+
+    const grad = ctx.createLinearGradient(0, 0, 48, 48);
+    grad.addColorStop(0, p.body);
+    grad.addColorStop(1, p.accent);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 48, 48);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(3, 3, 42, 42);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(index), 24, 25);
+
+    return canvas;
 }
 
 async function loadActionSprites() {
@@ -76,6 +348,10 @@ async function loadActionSprites() {
             const scaled = scaleImage(standImg, SPRITE_DISPLAY_H);
             Assets.sprites[char].left.stand = scaled;
             Assets.sprites[char].right.stand = flipImage(scaled);
+        } else {
+            const fallback = generateFallbackActionSprite(char, 'stand');
+            Assets.sprites[char].left.stand = fallback;
+            Assets.sprites[char].right.stand = flipImage(fallback);
         }
 
         const walkFrames = [];
@@ -83,6 +359,11 @@ async function loadActionSprites() {
             const img = await loadImage(`action/${char}_walk${i}.png`);
             if (img) {
                 walkFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
+            }
+        }
+        if (walkFrames.length === 0) {
+            for (let i = 0; i < 4; i++) {
+                walkFrames.push(generateFallbackActionSprite(char, 'walk', i));
             }
         }
         Assets.sprites[char].left.walk = walkFrames;
@@ -93,6 +374,11 @@ async function loadActionSprites() {
             const img = await loadImage(`action/${char}_attack${i}.png`);
             if (img) {
                 attackFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
+            }
+        }
+        if (attackFrames.length === 0) {
+            for (let i = 0; i < 4; i++) {
+                attackFrames.push(generateFallbackActionSprite(char, 'attack', i));
             }
         }
         Assets.sprites[char].left.attack = attackFrames;
@@ -145,6 +431,8 @@ async function loadSkillIcons() {
             const iconImg = await loadImage(`assets/icon_${char}_${i}.png`);
             if (iconImg) {
                 Assets.skillIcons[char].push(iconImg);
+            } else {
+                Assets.skillIcons[char].push(generateFallbackSkillIcon(char, i));
             }
         }
     }

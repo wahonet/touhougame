@@ -23,7 +23,13 @@ vb_touhou/
 │   ├── main.js                      # 旧 HTML 兼容启动器
 │   ├── scenes.js                    # 旧 HTML 兼容占位
 │   ├── scenes/
-│   │   └── index.js                 # 选角、对话、战斗、结算场景
+│   │   ├── index.js                 # 场景 barrel re-export
+│   │   ├── select-scene.js          # 选角场景
+│   │   ├── dialogue-scene.js        # 对话场景
+│   │   ├── battle-scene.js          # PvP 战斗场景
+│   │   ├── pve-scene.js             # PvE 场景编排
+│   │   ├── pve-hud.js               # PvE HUD 与结算绘制
+│   │   └── pve-background.js        # PvE 背景和平台绘制
 │   ├── config/
 │   │   └── game-config.js           # 屏幕、场地、HP、字体、调试等常量
 │   ├── core/
@@ -37,10 +43,14 @@ vb_touhou/
 │   │   ├── asset-manifest.js        # 资源命名清单
 │   │   ├── characters.js            # 角色显示名、颜色、技能冷却
 │   │   ├── dialogue-data.js         # 对话脚本
-│   │   └── stage-data.js            # 地面和平台布局
+│   │   ├── level-data.js            # PvE 多关卡配置
+│   │   └── stage-data.js            # PvP 地面和平台布局
 │   ├── entities/
 │   │   ├── animation.js             # 帧动画控制器
-│   │   └── fighter.js               # Fighter 实体、AI、技能更新与绘制
+│   │   ├── fighter.js               # Fighter 核心实体与物理流程
+│   │   ├── fighter-ai.js            # Fighter AI 决策
+│   │   ├── fighter-skills.js        # 技能激活、更新与绘制
+│   │   └── fighter-renderer.js      # Fighter 基础绘制
 │   ├── systems/
 │   │   ├── collision.js             # 矩形重叠、角色挤开等通用碰撞
 │   │   └── combat.js                # 普通攻击命中结算
@@ -195,11 +205,20 @@ js/scenes/
 - 数据命名使用稳定 id，如 `reimu`、`marisa`，显示文本从 `data/characters.js` 读取。
 - 不要在多个文件重复常量。屏幕尺寸、场地宽度、HP、字体等放 `config/game-config.js`。
 - 渲染代码可以读 `Assets`，但不要改变资源结构。
-- 每次重构后至少运行 `node --check` 检查改过的 JS 文件，并用本地 HTTP 服务打开页面。
+- 每次重构后至少运行 `npm run check`。该命令会做 JS 语法检查、基础数据校验、音效/特效资源校验和常见乱码检测。
+
+## 质量闸门
+
+- `scripts/check-project.mjs` 是当前最小自动化检查入口。
+- 新增角色时，`CHARACTER_IDS` 与 `CHARACTER_DEFINITIONS` 必须同步，且每个角色固定 4 个技能槽。
+- 新增 PvE 关卡时，`spawnZones[*].spawnIndices` 必须引用存在的敌人索引。
+- 新增音效和特效帧时，资源清单必须能映射到真实文件。
+- 角色真实动作图缺失时，`asset-loader` 会生成临时 Canvas 占位，保证原型可运行；正式内容上线前仍应补齐真实素材。
 
 ## 已知技术债
 
-- `entities/fighter.js` 仍然同时包含 AI、技能、物理和技能特效绘制，是下一轮重构重点。
-- `scenes/index.js` 仍然包含多个场景，后续场景增加前应继续拆成独立场景文件。
-- 缺少自动化测试。可以先为 `systems/collision.js`、`systems/combat.js` 这类纯规则补浏览器外可运行的单元测试。
+- `entities/fighter-skills.js` 仍然较大，且按角色名和技能序号集中分发。下一轮建议演进为 `skills/{character}.js` + 技能注册表。
+- `entities/fighter-ai.js` 和 `entities/enemy.js` 仍包含较多策略分支。后续可按敌人类型或行为树拆分。
+- `battle-scene.js` 与 `pve-scene.js` 仍承担较多编排和表现细节。后续可继续拆出 `camera-system`、`pickup-system`、`spawn-system`、`projectile-system`。
+- 自动化测试仍偏少。可以先为 `systems/collision.js`、`systems/combat.js` 这类纯规则补浏览器外可运行的单元测试。
 - `Game` 仍是共享可变对象。短期适合小型 Canvas 游戏，长期可以演进为场景上下文对象或事件驱动状态机。

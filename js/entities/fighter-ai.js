@@ -401,6 +401,11 @@ function _pickComboSkill(fighter, opponent, dist, dy) {
         if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 450) return 0;
     }
 
+    if (['sanae', 'flandre', 'sakuya', 'reisen'].includes(fighter.name)) {
+        if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 620) return 1;
+        if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520) return 0;
+    }
+
     // Try offensive skills first
     if (fighter.name === 'reimu') {
         // Spell cards for spread damage
@@ -428,6 +433,14 @@ function _tryTacticalSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio, pl
         return _tryYuyukoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
     } else if (fighter.name === 'youmu') {
         return _tryYoumuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'sanae') {
+        return _trySanaeSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'flandre') {
+        return _tryFlandreSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'sakuya') {
+        return _trySakuyaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'reisen') {
+        return _tryReisenSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
     }
     return false;
 }
@@ -584,6 +597,94 @@ function _tryYoumuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
         return true;
     }
 
+    return false;
+}
+
+function _trySanaeSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (hpRatio < 0.58 || Math.random() < 0.08)) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 680 && Math.random() < 0.28) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520 && dy < 130 && Math.random() < 0.34) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    return false;
+}
+
+function _tryFlandreSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 320 && Math.random() < 0.24) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 560 && Math.random() < 0.32) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 360 && dy < 100 && Math.random() < 0.38) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    return false;
+}
+
+function _trySakuyaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (oppHpRatio < 0.38 || hpRatio < 0.45) && Math.random() < 0.28) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 520 && Math.random() < 0.26) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 7;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 620 && dy < 130 && Math.random() < 0.36) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    return false;
+}
+
+function _tryReisenSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 520 && Math.random() < 0.24) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 7;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist > 220 && dist < 750 && dy < 110 && Math.random() < 0.34) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 620 && Math.random() < 0.3) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 6;
+        return true;
+    }
     return false;
 }
 

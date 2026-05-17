@@ -45,7 +45,7 @@ export class Fighter {
         // Hurtbox / hitbox dimensions (120px sprite)
         this.hurtboxW = 50;
         this.hurtboxH = 100;
-        this.hitboxW = 100;
+        this.hitboxW = character.attackRange || 100;
         this.hitboxH = 70;
 
         // Movement
@@ -61,13 +61,16 @@ export class Fighter {
         this.flying = { active: false, timer: 0, duration: 5 };
 
         // Normal attack damage
-        this.attackDamage = 10;
+        this.attackDamage = character.attackDamage || 10;
+        this.nextAttackBonus = 0;
 
         // Status effects
         this.stunTimer = 0;
         this.slowTimer = 0;
         this.slowMultiplier = 1;
         this.invincible = false;
+        this.timeStopTimer = 0;
+        this.confuseTimer = 0;
 
         // Animations
         this.anims = {};
@@ -219,6 +222,12 @@ export class Fighter {
                     if (skill.cooldown < 0) skill.cooldown = 0;
                 }
             }
+            return;
+        }
+
+        if (this.timeStopTimer > 0) {
+            this.timeStopTimer -= dt;
+            if (this.timeStopTimer < 0) this.timeStopTimer = 0;
             return;
         }
 
@@ -391,6 +400,11 @@ export class Fighter {
         } else {
             this.slowMultiplier = 1;
         }
+
+        if (this.confuseTimer > 0) {
+            this.confuseTimer -= dt;
+            if (this.confuseTimer < 0) this.confuseTimer = 0;
+        }
     }
 
     /** Player input handling */
@@ -405,12 +419,16 @@ export class Fighter {
 
         // Movement
         let moving = false;
-        if (keys.a) {
+        const reverse = this.confuseTimer > 0;
+        const moveLeft = reverse ? keys.d : keys.a;
+        const moveRight = reverse ? keys.a : keys.d;
+
+        if (moveLeft) {
             this.cx -= this.moveSpeed;
             this.setFacing('left');
             moving = true;
         }
-        if (keys.d) {
+        if (moveRight) {
             this.cx += this.moveSpeed;
             this.setFacing('right');
             moving = true;

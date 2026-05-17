@@ -1,6 +1,6 @@
 import { SFX_FILES } from '../data/asset-manifest.js';
 
-const AUDIO_CACHE_VERSION = '2026-05-18-bgm-v3';
+const AUDIO_CACHE_VERSION = '2026-05-18-moriya-a';
 
 export const AudioManager = {
     ctx: null,

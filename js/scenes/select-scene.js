@@ -6,10 +6,11 @@ import { Assets } from '../core/asset-store.js';
 import { AudioManager } from '../core/audio-manager.js';
 import { Game } from '../core/game-state.js';
 import { CHARACTER_DEFINITIONS } from '../data/characters.js';
+import { CHARACTER_IDS } from '../data/asset-manifest.js';
 import { BattleScene } from './battle-scene.js';
 import { PvEScene } from './pve-scene.js';
 
-const CHAR_IDS = ['reimu', 'marisa', 'yuyuko', 'youmu'];
+const CHAR_IDS = CHARACTER_IDS;
 
 export const SelectScene = {
     selectedIndex: 0,
@@ -46,9 +47,9 @@ export const SelectScene = {
     },
 
     handleKey(key) {
-        if (['1', '2', '3', '4'].includes(key)) {
+        if (/^[1-8]$/.test(key)) {
             this.selectedIndex = Number(key) - 1;
-            this._chooseCurrent();
+            if (this.selectedIndex < CHAR_IDS.length) this._chooseCurrent();
         }
 
         if (key === 'arrowleft' || key === 'a') this._moveSelection(-1, 0);
@@ -57,7 +58,7 @@ export const SelectScene = {
         if (key === 'arrowdown' || key === 's') this._moveSelection(0, 1);
 
         if (key === 'enter' || key === ' ') this._chooseCurrent();
-        if (key === '5') {
+        if (key === 'p') {
             const index = this.playerIndex >= 0 ? this.playerIndex : this.selectedIndex;
             this._startPvE(index);
         }
@@ -69,11 +70,13 @@ export const SelectScene = {
     },
 
     _moveSelection(dx, dy) {
-        const col = this.selectedIndex % 2;
-        const row = Math.floor(this.selectedIndex / 2);
-        const nextCol = Math.max(0, Math.min(1, col + dx));
-        const nextRow = Math.max(0, Math.min(1, row + dy));
-        this.selectedIndex = nextRow * 2 + nextCol;
+        const cols = 4;
+        const rows = Math.ceil(CHAR_IDS.length / cols);
+        const col = this.selectedIndex % cols;
+        const row = Math.floor(this.selectedIndex / cols);
+        const nextCol = Math.max(0, Math.min(cols - 1, col + dx));
+        const nextRow = Math.max(0, Math.min(rows - 1, row + dy));
+        this.selectedIndex = Math.min(CHAR_IDS.length - 1, nextRow * cols + nextCol);
     },
 
     _chooseCurrent() {
@@ -181,16 +184,16 @@ export const SelectScene = {
     },
 
     _drawAvatarGrid(ctx) {
-        const size = 138;
-        const gap = 22;
-        const startX = 86;
-        const startY = 278;
+        const size = 112;
+        const gap = 16;
+        const startX = 56;
+        const startY = 288;
 
         for (let i = 0; i < CHAR_IDS.length; i++) {
             const charId = CHAR_IDS[i];
             const def = CHARACTER_DEFINITIONS[charId];
-            const col = i % 2;
-            const row = Math.floor(i / 2);
+            const col = i % 4;
+            const row = Math.floor(i / 4);
             const x = startX + col * (size + gap);
             const y = startY + row * (size + gap);
             const selected = i === this.selectedIndex;
@@ -217,7 +220,7 @@ export const SelectScene = {
     },
 
     _drawSkillPanel(ctx, charId, def) {
-        const x = 445, y = 245, w = 735, h = 390;
+        const x = 610, y = 245, w = 590, h = 390;
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.32)';
         this._roundRect(ctx, x, y, w, h, 8);
@@ -260,7 +263,7 @@ export const SelectScene = {
             ctx.fillStyle = 'rgba(255,255,255,0.56)';
             ctx.fillText(`${this._typeLabel(skill.type)}  CD ${skill.maxCooldown}s`, x + 88, rowY + 39);
             ctx.fillStyle = 'rgba(255,255,255,0.76)';
-            ctx.fillText(skill.description, x + 255, rowY + 30);
+            ctx.fillText(skill.description, x + 230, rowY + 30, 320);
         }
         ctx.restore();
     },
@@ -270,7 +273,7 @@ export const SelectScene = {
         ctx.font = `15px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText('1-4/方向键选择  Enter确认  5进入PvE', W / 2, H - 30);
+        ctx.fillText('1-8/方向键选择  Enter确认  P进入PvE', W / 2, H - 30);
         ctx.restore();
 
         const pve = this._pveButtonRect();
@@ -311,13 +314,13 @@ export const SelectScene = {
     },
 
     _hitAvatar(mx, my) {
-        const size = 138;
-        const gap = 22;
-        const startX = 86;
-        const startY = 278;
+        const size = 112;
+        const gap = 16;
+        const startX = 56;
+        const startY = 288;
         for (let i = 0; i < CHAR_IDS.length; i++) {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
+            const col = i % 4;
+            const row = Math.floor(i / 4);
             const x = startX + col * (size + gap);
             const y = startY + row * (size + gap);
             if (mx >= x && mx <= x + size && my >= y && my <= y + size) return i;

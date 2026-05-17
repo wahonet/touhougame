@@ -259,7 +259,9 @@ export const PvEScene = {
                 const eHurtbox = enemy.getHurtbox();
                 if (pHitbox && rectsOverlap(pHitbox, eHurtbox)) {
                     player._atkHit = true;
-                    const dmg = (player._powerMultiplier || 1) * 20;
+                    const bonus = player.nextAttackBonus || 0;
+                    const dmg = (player._powerMultiplier || 1) * ((player.attackDamage || 10) * 2 + bonus);
+                    player.nextAttackBonus = 0;
                     enemy.damage(dmg);
                     this._addDamageNumber(enemy.cx, enemy.cy - enemy.height, dmg);
                     this._addCombo();
@@ -587,6 +589,140 @@ export const PvEScene = {
                     data._pveHitEnemies.add(enemy);
                     enemy.damage(120);
                 }
+            }
+        }
+
+        // ---- SANAE SKILLS ----
+        const sanaeSkill0 = player.skills[0];
+        if (player.name === 'sanae' && sanaeSkill0.active && sanaeSkill0.data && sanaeSkill0.data.blades) {
+            for (const blade of sanaeSkill0.data.blades) {
+                if (!blade.active || blade.hit) continue;
+                const bladeRect = { x: blade.x - 28, y: blade.y - 22, w: 56, h: 44 };
+                if (rectsOverlap(bladeRect, enemy.getHurtbox())) {
+                    blade.hit = true;
+                    blade.active = false;
+                    enemy.damage(42);
+                    enemy.velocityX = (enemy.velocityX || 0) + Math.sign(blade.vx) * 3;
+                    sanaeSkill0.data.hitEffects.push({ x: blade.x, y: blade.y, timer: 16 });
+                }
+            }
+        }
+
+        const sanaeSkill1 = player.skills[1];
+        if (player.name === 'sanae' && sanaeSkill1.active && sanaeSkill1.data && sanaeSkill1.data.timer >= 0.62) {
+            const data = sanaeSkill1.data;
+            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
+            const starRect = { x: data.x - 62, y: data.y - 145, w: 124, h: 190 };
+            if (!data._pveHitEnemies.has(enemy) && rectsOverlap(starRect, enemy.getHurtbox())) {
+                data._pveHitEnemies.add(enemy);
+                enemy.damage(145);
+                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.35);
+            }
+        }
+
+        // ---- FLANDRE SKILLS ----
+        const flandreSkill0 = player.skills[0];
+        if (player.name === 'flandre' && flandreSkill0.active && flandreSkill0.data && flandreSkill0.data.slash) {
+            const slash = flandreSkill0.data.slash;
+            if (slash.active && !slash._pveHit) {
+                const slashRect = { x: slash.x - 52, y: slash.y - 44, w: 104, h: 88 };
+                if (rectsOverlap(slashRect, enemy.getHurtbox())) {
+                    slash._pveHit = true;
+                    slash.active = false;
+                    enemy.damage(120);
+                }
+            }
+        }
+
+        const flandreSkill1 = player.skills[1];
+        if (player.name === 'flandre' && flandreSkill1.active && flandreSkill1.data && flandreSkill1.data.timer >= 0.75) {
+            const data = flandreSkill1.data;
+            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
+            const hb = enemy.getHurtbox();
+            const ecx = hb.x + hb.w / 2;
+            const ecy = hb.y + hb.h / 2;
+            const dx = ecx - data.x;
+            const dy = ecy - data.y;
+            if (!data._pveHitEnemies.has(enemy) && dx * dx + dy * dy <= data.radius * data.radius) {
+                data._pveHitEnemies.add(enemy);
+                enemy.damage(180);
+                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.5);
+            }
+        }
+
+        // ---- SAKUYA SKILLS ----
+        const sakuyaSkill0 = player.skills[0];
+        if (player.name === 'sakuya' && sakuyaSkill0.active && sakuyaSkill0.data && sakuyaSkill0.data.knives) {
+            for (const knife of sakuyaSkill0.data.knives) {
+                if (!knife.active || knife.hit) continue;
+                const knifeRect = { x: knife.x - 18, y: knife.y - 6, w: 36, h: 12 };
+                if (rectsOverlap(knifeRect, enemy.getHurtbox())) {
+                    knife.hit = true;
+                    knife.active = false;
+                    enemy.damage(24);
+                    sakuyaSkill0.data.hitEffects.push({ x: knife.x, y: knife.y, timer: 10 });
+                }
+            }
+        }
+
+        const sakuyaSkill1 = player.skills[1];
+        if (player.name === 'sakuya' && sakuyaSkill1.active && sakuyaSkill1.data && sakuyaSkill1.data.timer >= 0.18) {
+            const data = sakuyaSkill1.data;
+            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
+            const crossRect = { x: data.x - 70, y: data.y - 58, w: 140, h: 116 };
+            if (!data._pveHitEnemies.has(enemy) && rectsOverlap(crossRect, enemy.getHurtbox())) {
+                data._pveHitEnemies.add(enemy);
+                enemy.damage(150);
+                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.55);
+            }
+        }
+
+        const sakuyaSkill3 = player.skills[3];
+        if (player.name === 'sakuya' && sakuyaSkill3.active) {
+            enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.2);
+        }
+
+        // ---- REISEN SKILLS ----
+        const reisenSkill0 = player.skills[0];
+        if (player.name === 'reisen' && reisenSkill0.active && reisenSkill0.data && reisenSkill0.data.phase === 'fire') {
+            const data = reisenSkill0.data;
+            const beamRect = player._calcBeamRect(data.beamDir, 28, 900, data.aimY);
+            if (beamRect && rectsOverlap(beamRect, enemy.getHurtbox())) {
+                if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
+                const tickIdx = data.damageTicks.filter(Boolean).length - 1;
+                const tickKey = `${enemy.cx}_${enemy.cy}_${tickIdx}`;
+                if (!data._pveHitEnemies.has(tickKey)) {
+                    data._pveHitEnemies.add(tickKey);
+                    enemy.damage(22);
+                }
+            }
+        }
+
+        const reisenSkill1 = player.skills[1];
+        if (player.name === 'reisen' && reisenSkill1.active && reisenSkill1.data && reisenSkill1.data.wave) {
+            const wave = reisenSkill1.data.wave;
+            const waveRect = { x: wave.x - 42, y: wave.y - 32, w: 84, h: 64 };
+            if (wave.active && !wave.hitTargets.includes(enemy) && rectsOverlap(waveRect, enemy.getHurtbox())) {
+                wave.hitTargets.push(enemy);
+                enemy.damage(110);
+                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.8);
+                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 2);
+                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.6);
+            }
+        }
+
+        const reisenSkill3 = player.skills[3];
+        if (player.name === 'reisen' && reisenSkill3.active && reisenSkill3.data) {
+            const data = reisenSkill3.data;
+            const hb = enemy.getHurtbox();
+            const ecx = hb.x + hb.w / 2;
+            const ecy = hb.y + hb.h / 2;
+            const dx = ecx - data.cx;
+            const dy = ecy - data.cy;
+            if (dx * dx + dy * dy <= data.radius * data.radius) {
+                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.45);
+                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 2.6);
+                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.5);
             }
         }
     },

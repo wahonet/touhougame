@@ -9,6 +9,8 @@ export const CHARACTER_DEFINITIONS = {
         accentColor: '#ff6b8a',
         selectAccentColor: '#ff4466',
         maxHp: 1000,
+        attackDamage: 10,
+        attackRange: 100,
         skillColors: ['#cc3333', '#991133', '#6644aa', '#aa77dd'],
         skills: [
             { name: '梦想天生', type: 'damage', maxCooldown: 15, description: '散射八枚灵符，适合中距离压制。' },
@@ -27,10 +29,12 @@ export const CHARACTER_DEFINITIONS = {
         accentColor: '#ffcc00',
         selectAccentColor: '#ffcc00',
         maxHp: 850,
+        attackDamage: 10,
+        attackRange: 100,
         skillColors: ['#ddaa00', '#cc8800', '#cccc44', '#88cc44'],
         skills: [
-            { name: '魔法炮', type: 'damage', maxCooldown: 15, description: '蓄力后发射直线光炮，多段命中。' },
-            { name: '二重魔法炮', type: 'damage', maxCooldown: 30, description: '更粗更远的光炮，爆发伤害更高。' },
+            { name: '魔法炮', type: 'damage', maxCooldown: 15, description: '蓄力后发射追踪高度的小光炮，多段命中。' },
+            { name: '双重魔法炮', type: 'damage', maxCooldown: 30, description: '更粗更远的光炮，爆发伤害更高。' },
             { name: '群星眩光', type: 'utility', maxCooldown: 20, description: '星弹不造成伤害，命中会眩晕目标3秒。' },
             { name: '防护罩', type: 'shield', maxCooldown: 20, description: '生成魔法护罩，吸收即将到来的伤害。' }
         ]
@@ -45,11 +49,13 @@ export const CHARACTER_DEFINITIONS = {
         accentColor: '#ff88cc',
         selectAccentColor: '#ff66bb',
         maxHp: 1500,
+        attackDamage: 9,
+        attackRange: 105,
         skillColors: ['#ff66aa', '#cc88ff', '#ffaadd', '#88ccff'],
         skills: [
             { name: '反魂蝶', type: 'damage', maxCooldown: 15, description: '八枚蝶弹扇形展开，命中造成稳定伤害。' },
             { name: '幽雅灵弹', type: 'damage', maxCooldown: 25, description: '高速追踪幽魂弹，命中后造成高额伤害。' },
-            { name: '死出之导', type: 'shield', maxCooldown: 20, description: '展开更坚固的幽魂护盾，吸收大量伤害。' },
+            { name: '死出之导', type: 'shield', maxCooldown: 20, description: '展开坚固的幽灵护盾，吸收大量伤害。' },
             { name: '西行妖梦境', type: 'utility', maxCooldown: 30, description: '在敌人位置展开樱花梦境，束缚并大幅减速。' }
         ]
     },
@@ -63,12 +69,94 @@ export const CHARACTER_DEFINITIONS = {
         accentColor: '#88eebb',
         selectAccentColor: '#66ddaa',
         maxHp: 900,
+        attackDamage: 12,
+        attackRange: 105,
         skillColors: ['#44ddaa', '#88ccff', '#aaffcc', '#66ffdd'],
         skills: [
             { name: '半灵追斩', type: 'damage', maxCooldown: 12, description: '半灵化作追踪斩击，自动追向敌人。' },
             { name: '幽魂回刃', type: 'damage', maxCooldown: 20, description: '放出往返幽魂剑气，去回程都可命中。' },
-            { name: '半灵护佑', type: 'shield', maxCooldown: 20, description: '半灵环绕成盾，吸收一段伤害。' },
+            { name: '半灵护网', type: 'shield', maxCooldown: 20, description: '半灵环绕成盾，吸收一段伤害。' },
             { name: '幽体步', type: 'utility', maxCooldown: 16, description: '化为幽影快速位移，期间短暂无敌。' }
+        ]
+    },
+    sanae: {
+        id: 'sanae',
+        displayName: '早苗',
+        englishName: 'Sanae',
+        selectName: '东风谷早苗 (Sanae)',
+        uiName: '早苗 Sanae',
+        resultName: '早苗 (Sanae)',
+        accentColor: '#68e0a0',
+        selectAccentColor: '#63f3b0',
+        maxHp: 1050,
+        attackDamage: 9,
+        attackRange: 120,
+        skillColors: ['#7df5bd', '#ffe86b', '#68b8ff', '#9affd2'],
+        skills: [
+            { name: '神风之符', type: 'damage', maxCooldown: 13, description: '三道弧形风刃向前推进，命中会轻微击退。' },
+            { name: '客星奇迹', type: 'damage', maxCooldown: 24, description: '短暂预兆后在敌人脚下落下星光柱。' },
+            { name: '守矢护佑', type: 'shield', maxCooldown: 20, description: '蛇与蛙的双层护罩，破盾时击退近身敌人。' },
+            { name: '奇迹祈愿', type: 'utility', maxCooldown: 28, description: '祈愿触发奇迹，回复、减CD或短暂强化下一击。' }
+        ]
+    },
+    flandre: {
+        id: 'flandre',
+        displayName: '芙兰',
+        englishName: 'Flandre',
+        selectName: '芙兰朵露 (Flandre)',
+        uiName: '芙兰 Flandre',
+        resultName: '芙兰 (Flandre)',
+        accentColor: '#ff5666',
+        selectAccentColor: '#ff3d4f',
+        maxHp: 800,
+        attackDamage: 12,
+        attackRange: 95,
+        skillColors: ['#ff4a3f', '#ff9a2f', '#df3350', '#f06cff'],
+        skills: [
+            { name: '禁忌莱瓦汀', type: 'damage', maxCooldown: 14, description: '挥出火焰剑波，近中距离爆发很高。' },
+            { name: '破坏之眼', type: 'damage', maxCooldown: 26, description: '锁定敌人当前位置，延迟后产生裂纹爆破。' },
+            { name: '红魔结界', type: 'shield', maxCooldown: 20, description: '短时间高吸收的血红晶翼护盾。' },
+            { name: '四重存在', type: 'utility', maxCooldown: 30, description: '召出残影分身扰乱锁定，下一次平A附带爆裂。' }
+        ]
+    },
+    sakuya: {
+        id: 'sakuya',
+        displayName: '咲夜',
+        englishName: 'Sakuya',
+        selectName: '十六夜咲夜 (Sakuya)',
+        uiName: '咲夜 Sakuya',
+        resultName: '咲夜 (Sakuya)',
+        accentColor: '#a9d7ff',
+        selectAccentColor: '#7fc9ff',
+        maxHp: 900,
+        attackDamage: 11,
+        attackRange: 165,
+        skillColors: ['#dcefff', '#86c7ff', '#9dbbff', '#d8f2ff'],
+        skills: [
+            { name: '银刃阵', type: 'damage', maxCooldown: 13, description: '扇形投掷多把飞刀，中近距离压制。' },
+            { name: '幻象杀人鬼', type: 'damage', maxCooldown: 24, description: '瞬移到敌人侧后方，释放交叉刀阵。' },
+            { name: '怀表结界', type: 'shield', maxCooldown: 20, description: '时间护盾抵消伤害，并减速周围敌人。' },
+            { name: '咲夜的世界', type: 'utility', maxCooldown: 34, description: '短暂时停敌人和怪物，咲夜可自由行动。' }
+        ]
+    },
+    reisen: {
+        id: 'reisen',
+        displayName: '铃仙',
+        englishName: 'Reisen',
+        selectName: '铃仙·优昙华院 (Reisen)',
+        uiName: '铃仙 Reisen',
+        resultName: '铃仙 (Reisen)',
+        accentColor: '#bc8cff',
+        selectAccentColor: '#ff5fa8',
+        maxHp: 950,
+        attackDamage: 8,
+        attackRange: 250,
+        skillColors: ['#ff445f', '#636dff', '#bc8cff', '#ff5fa8'],
+        skills: [
+            { name: '月兔光束', type: 'damage', maxCooldown: 14, description: '蓄力发射细光束，会轻微追踪敌人高度。' },
+            { name: '幻视波纹', type: 'damage', maxCooldown: 24, description: '穿透波长弹造成伤害，并让目标短暂混乱。' },
+            { name: '波长偏转', type: 'shield', maxCooldown: 20, description: '偏转弹幕并减伤，近身攻击只部分抵消。' },
+            { name: '狂气之眼', type: 'utility', maxCooldown: 30, description: '大范围狂气波，使目标反向移动并降低速度。' }
         ]
     }
 };

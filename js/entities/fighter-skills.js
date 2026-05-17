@@ -52,6 +52,34 @@ export function activateSkill(fighter, index, opponent) {
             case 2: _activateYoumuHalfSpiritShield(fighter, skill); break;
             case 3: _activateYoumuGhostStep(fighter, skill); break;
         }
+    } else if (fighter.name === 'sanae') {
+        switch (index) {
+            case 0: _activateSanaeWind(fighter, skill); break;
+            case 1: _activateSanaeMiracleStar(fighter, skill, opponent); break;
+            case 2: _activateSanaeMoriyaWard(fighter, skill); break;
+            case 3: _activateSanaeMiraclePrayer(fighter, skill); break;
+        }
+    } else if (fighter.name === 'flandre') {
+        switch (index) {
+            case 0: _activateFlandreLaevatein(fighter, skill); break;
+            case 1: _activateFlandreDestructionEye(fighter, skill, opponent); break;
+            case 2: _activateFlandreScarletShield(fighter, skill); break;
+            case 3: _activateFlandreFourOfAKind(fighter, skill); break;
+        }
+    } else if (fighter.name === 'sakuya') {
+        switch (index) {
+            case 0: _activateSakuyaKnifeArray(fighter, skill); break;
+            case 1: _activateSakuyaKillingDoll(fighter, skill, opponent); break;
+            case 2: _activateSakuyaWatchWard(fighter, skill); break;
+            case 3: _activateSakuyaWorld(fighter, skill, opponent); break;
+        }
+    } else if (fighter.name === 'reisen') {
+        switch (index) {
+            case 0: _activateReisenLunarBeam(fighter, skill); break;
+            case 1: _activateReisenMindWave(fighter, skill); break;
+            case 2: _activateReisenWaveShield(fighter, skill); break;
+            case 3: _activateReisenLunaticEyes(fighter, skill, opponent); break;
+        }
     }
 }
 
@@ -249,7 +277,7 @@ function _activateYuyukoSpiritGuide(fighter, skill) {
 function _activateYuyukoCherryBlossomStorm(fighter, skill, opponent) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
     const dir = fighter.facing === 'right' ? 1 : -1;
-    const targetBox = opponent && opponent.getHurtbox ? opponent.getHurtbox() : null;
+    const targetBox = _getActivationHurtbox(opponent);
     const targetX = targetBox ? targetBox.x + targetBox.w / 2 : fighter.cx + dir * 220;
     const targetY = targetBox ? targetBox.y + targetBox.h / 2 : fighter.cy - fighter.hurtboxH / 2;
     skill.data = {
@@ -339,6 +367,267 @@ function _activateYoumuGhostStep(fighter, skill) {
     };
 }
 
+function _getActivationHurtbox(opponent) {
+    if (!opponent) return null;
+    let box = opponent.getHurtbox ? opponent.getHurtbox() : null;
+    if (box && box.x < 9000) return box;
+    if (opponent.cx !== undefined && opponent.cy !== undefined) {
+        const w = opponent.hurtboxW || 50;
+        const h = opponent.hurtboxH || 100;
+        box = { x: opponent.cx - w / 2, y: opponent.cy - h, w, h };
+    }
+    return box;
+}
+
+// ---- SANAE SKILLS ----
+
+function _activateSanaeWind(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = { blades: [], hitEffects: [] };
+    for (let i = 0; i < 3; i++) {
+        skill.data.blades.push({
+            x: fighter.cx + dir * 38,
+            y: fighter.cy - fighter.hurtboxH * (0.72 - i * 0.16),
+            vx: dir * (8.5 + i * 0.9),
+            vy: (i - 1) * 1.05,
+            frame: i * 7,
+            active: true,
+            hit: false
+        });
+    }
+}
+
+function _activateSanaeMiracleStar(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 260,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        timer: 0,
+        duration: 1.05,
+        hit: false
+    };
+}
+
+function _activateSanaeMoriyaWard(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 300,
+        maxHp: 300,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateSanaeMiraclePrayer(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const hpRatio = fighter.hp / fighter.maxHp;
+    const highCooldown = fighter.skills.find(s => s !== skill && s.cooldown > 8);
+    let miracle = 'power';
+    if (hpRatio < 0.55) {
+        miracle = 'heal';
+        fighter.hp = Math.min(fighter.maxHp, fighter.hp + 150);
+    } else if (highCooldown) {
+        miracle = 'cooldown';
+        for (const other of fighter.skills) {
+            if (other !== skill && other.cooldown > 0) other.cooldown = Math.max(0, other.cooldown - 7);
+        }
+    } else {
+        fighter.nextAttackBonus = Math.max(fighter.nextAttackBonus || 0, 35);
+    }
+    skill.data = { timer: 0, duration: 1.35, miracle };
+}
+
+// ---- FLANDRE SKILLS ----
+
+function _activateFlandreLaevatein(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = {
+        slash: {
+            x: fighter.cx + dir * 55,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            vx: dir * 10.5,
+            dir,
+            frame: 0,
+            active: true,
+            hit: false
+        }
+    };
+}
+
+function _activateFlandreDestructionEye(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 230,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 125,
+        timer: 0,
+        duration: 1.15,
+        hit: false
+    };
+}
+
+function _activateFlandreScarletShield(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 420,
+        maxHp: 420,
+        duration: 5,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateFlandreFourOfAKind(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    fighter.nextAttackBonus = Math.max(fighter.nextAttackBonus || 0, 45);
+    skill.data = {
+        timer: 0,
+        duration: 5,
+        clones: [
+            { ox: -70, oy: -8, phase: 0 },
+            { ox: 70, oy: -8, phase: 1.7 },
+            { ox: 0, oy: -46, phase: 3.2 }
+        ]
+    };
+}
+
+// ---- SAKUYA SKILLS ----
+
+function _activateSakuyaKnifeArray(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = { knives: [], hitEffects: [] };
+    for (let i = 0; i < 7; i++) {
+        const angle = (-24 + i * 8) * Math.PI / 180;
+        skill.data.knives.push({
+            x: fighter.cx + dir * 42,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            vx: Math.cos(angle) * 12 * dir,
+            vy: Math.sin(angle) * 4.5,
+            frame: i * 2,
+            active: true,
+            hit: false
+        });
+    }
+}
+
+function _activateSakuyaKillingDoll(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const hb = _getActivationHurtbox(opponent);
+    if (hb) {
+        fighter.cx = hb.x + hb.w / 2 - dir * 95;
+        fighter.setFacing(dir === 1 ? 'right' : 'left');
+        if (typeof fighter.clampToBounds === 'function') fighter.clampToBounds();
+    }
+    skill.data = {
+        x: fighter.cx + dir * 80,
+        y: fighter.cy - fighter.hurtboxH / 2,
+        dir,
+        timer: 0,
+        duration: 0.58,
+        hit: false
+    };
+}
+
+function _activateSakuyaWatchWard(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 260,
+        maxHp: 260,
+        duration: 7,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateSakuyaWorld(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    if (opponent && opponent.state !== 'dead') {
+        opponent.timeStopTimer = Math.max(opponent.timeStopTimer || 0, 2.1);
+    }
+    skill.data = {
+        x: fighter.cx,
+        y: fighter.cy - fighter.hurtboxH / 2,
+        timer: 0,
+        duration: 2.1,
+        rings: []
+    };
+    for (let i = 0; i < 14; i++) {
+        skill.data.rings.push({ angle: Math.random() * Math.PI * 2, radius: 45 + Math.random() * 150 });
+    }
+}
+
+// ---- REISEN SKILLS ----
+
+function _activateReisenLunarBeam(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_laser');
+    skill.data = {
+        phase: 'charge',
+        chargeTimer: 0,
+        fireTimer: 0,
+        damageTicks: [false, false, false],
+        beamDir: fighter.facing === 'right' ? 1 : -1,
+        aimY: fighter.cy - fighter.hurtboxH / 2
+    };
+}
+
+function _activateReisenMindWave(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = {
+        wave: {
+            x: fighter.cx + dir * 45,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            vx: dir * 8.2,
+            dir,
+            frame: 0,
+            active: true,
+            hitTargets: []
+        }
+    };
+}
+
+function _activateReisenWaveShield(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 300,
+        maxHp: 300,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateReisenLunaticEyes(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        cx: target ? target.x + target.w / 2 : fighter.cx + dir * 180,
+        cy: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 230,
+        timer: 0,
+        duration: 3.2,
+        affected: []
+    };
+}
+
 // ===================== BEAM RECT HELPERS =====================
 
 /** Get the beam rectangle for regular laser */
@@ -403,6 +692,34 @@ export function updateSkillByIndex(fighter, index, dt, opponent) {
             case 1: _updateYoumuGhostBlade(fighter, skill, dt, opponent); break;
             case 2: _updateYoumuHalfSpiritShield(fighter, skill, dt); break;
             case 3: _updateYoumuGhostStep(fighter, skill, dt); break;
+        }
+    } else if (fighter.name === 'sanae') {
+        switch (index) {
+            case 0: _updateSanaeWind(fighter, skill, dt, opponent); break;
+            case 1: _updateSanaeMiracleStar(fighter, skill, dt, opponent); break;
+            case 2: _updateGenericShield(fighter, skill); break;
+            case 3: _updateTimedAura(skill, dt); break;
+        }
+    } else if (fighter.name === 'flandre') {
+        switch (index) {
+            case 0: _updateFlandreLaevatein(fighter, skill, dt, opponent); break;
+            case 1: _updateFlandreDestructionEye(fighter, skill, dt, opponent); break;
+            case 2: _updateGenericShield(fighter, skill); break;
+            case 3: _updateTimedAura(skill, dt); break;
+        }
+    } else if (fighter.name === 'sakuya') {
+        switch (index) {
+            case 0: _updateSakuyaKnifeArray(fighter, skill, dt, opponent); break;
+            case 1: _updateSakuyaKillingDoll(fighter, skill, dt, opponent); break;
+            case 2: _updateGenericShield(fighter, skill); break;
+            case 3: _updateSakuyaWorld(fighter, skill, dt); break;
+        }
+    } else if (fighter.name === 'reisen') {
+        switch (index) {
+            case 0: _updateReisenLunarBeam(fighter, skill, dt, opponent); break;
+            case 1: _updateReisenMindWave(fighter, skill, dt, opponent); break;
+            case 2: _updateGenericShield(fighter, skill); break;
+            case 3: _updateReisenLunaticEyes(fighter, skill, dt, opponent); break;
         }
     }
 }
@@ -970,6 +1287,253 @@ function _updateYoumuGhostStep(fighter, skill, dt) {
     }
 }
 
+// ---- NEW CHARACTER SKILL UPDATES ----
+
+function _updateGenericShield(fighter, skill) {
+    if (!fighter.shield) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateTimedAura(skill, dt) {
+    const data = skill.data;
+    data.timer += dt;
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _targetCenter(target) {
+    const hb = target.getHurtbox();
+    return { x: hb.x + hb.w / 2, y: hb.y + hb.h / 2, hb };
+}
+
+function _updateSanaeWind(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    for (const blade of data.blades) {
+        if (!blade.active) continue;
+        blade.x += blade.vx;
+        blade.y += blade.vy + Math.sin(blade.frame * 0.13) * 0.7;
+        blade.frame++;
+        if (!blade.hit && opponent.state !== 'dead') {
+            const hb = opponent.getHurtbox();
+            const rect = { x: blade.x - 28, y: blade.y - 22, w: 56, h: 44 };
+            if (rectsOverlap(rect, hb)) {
+                blade.hit = true;
+                blade.active = false;
+                opponent.damage(42);
+                opponent.velocityX = (opponent.velocityX || 0) + Math.sign(blade.vx) * 4;
+                data.hitEffects.push({ x: blade.x, y: blade.y, timer: 16 });
+            }
+        }
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (blade.frame > 90 || blade.x < -80 || blade.x > boundX + 80) blade.active = false;
+    }
+    _tickHitEffects(data.hitEffects);
+    if (data.blades.every(b => !b.active) && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSanaeMiracleStar(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+    if (!data.hit && data.timer >= 0.62 && opponent.state !== 'dead') {
+        const hb = opponent.getHurtbox();
+        const rect = { x: data.x - 62, y: data.y - 145, w: 124, h: 190 };
+        if (rectsOverlap(rect, hb)) {
+            data.hit = true;
+            opponent.damage(145);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.35);
+        }
+    }
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateFlandreLaevatein(fighter, skill, dt, opponent) {
+    const slash = skill.data.slash;
+    slash.x += slash.vx;
+    slash.frame++;
+    slash.y += Math.sin(slash.frame * 0.22) * 0.4;
+    if (!slash.hit && opponent.state !== 'dead') {
+        const rect = { x: slash.x - 52, y: slash.y - 44, w: 104, h: 88 };
+        if (rectsOverlap(rect, opponent.getHurtbox())) {
+            slash.hit = true;
+            slash.active = false;
+            opponent.damage(120);
+        }
+    }
+    const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+    if (slash.frame > 70 || slash.x < -80 || slash.x > boundX + 80) slash.active = false;
+    if (!slash.active) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateFlandreDestructionEye(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+    if (!data.hit && data.timer >= 0.75 && opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.x;
+        const dy = y - data.y;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            data.hit = true;
+            opponent.damage(180);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.5);
+        }
+    }
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSakuyaKnifeArray(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    for (const knife of data.knives) {
+        if (!knife.active) continue;
+        knife.x += knife.vx;
+        knife.y += knife.vy;
+        knife.frame++;
+        if (!knife.hit && opponent.state !== 'dead') {
+            const hb = opponent.getHurtbox();
+            const rect = { x: knife.x - 18, y: knife.y - 6, w: 36, h: 12 };
+            if (rectsOverlap(rect, hb)) {
+                knife.hit = true;
+                knife.active = false;
+                opponent.damage(24);
+                data.hitEffects.push({ x: knife.x, y: knife.y, timer: 10 });
+            }
+        }
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (knife.frame > 75 || knife.x < -80 || knife.x > boundX + 80) knife.active = false;
+    }
+    _tickHitEffects(data.hitEffects);
+    if (data.knives.every(k => !k.active) && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSakuyaKillingDoll(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+    if (!data.hit && data.timer >= 0.18 && opponent.state !== 'dead') {
+        const rect = { x: data.x - 70, y: data.y - 58, w: 140, h: 116 };
+        if (rectsOverlap(rect, opponent.getHurtbox())) {
+            data.hit = true;
+            opponent.damage(150);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.55);
+        }
+    }
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSakuyaWorld(fighter, skill, dt) {
+    const data = skill.data;
+    data.timer += dt;
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateReisenLunarBeam(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    const targetY = opponent && opponent.cy !== undefined
+        ? opponent.cy - ((opponent.hurtboxH || 100) / 2)
+        : fighter.cy - fighter.hurtboxH / 2;
+    data.aimY += (targetY - data.aimY) * (data.phase === 'fire' ? 0.09 : 0.2);
+
+    if (data.phase === 'charge') {
+        data.chargeTimer += dt;
+        if (data.chargeTimer >= 0.42) {
+            data.phase = 'fire';
+            data.fireTimer = 0;
+            data.beamDir = fighter.facing === 'right' ? 1 : -1;
+        }
+        return;
+    }
+
+    if (data.phase === 'fire') {
+        data.fireTimer += dt;
+        const tickTimes = [0, 0.24, 0.48];
+        for (let i = 0; i < tickTimes.length; i++) {
+            if (!data.damageTicks[i] && data.fireTimer >= tickTimes[i]) {
+                data.damageTicks[i] = true;
+                const rect = calcBeamRect(fighter, data.beamDir, 28, 900, data.aimY);
+                if (opponent.state !== 'dead' && rectsOverlap(rect, opponent.getHurtbox())) {
+                    opponent.damage(22);
+                }
+            }
+        }
+        if (data.fireTimer >= 0.82) {
+            skill.active = false;
+            skill.data = {};
+        }
+    }
+}
+
+function _updateReisenMindWave(fighter, skill, dt, opponent) {
+    const wave = skill.data.wave;
+    wave.x += wave.vx;
+    wave.frame++;
+    if (opponent.state !== 'dead' && !wave.hitTargets.includes(opponent)) {
+        const rect = { x: wave.x - 42, y: wave.y - 32, w: 84, h: 64 };
+        if (rectsOverlap(rect, opponent.getHurtbox())) {
+            wave.hitTargets.push(opponent);
+            opponent.damage(110);
+            opponent.confuseTimer = Math.max(opponent.confuseTimer || 0, 2.2);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 2.2);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.65);
+        }
+    }
+    const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+    if (wave.frame > 95 || wave.x < -100 || wave.x > boundX + 100) wave.active = false;
+    if (!wave.active) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateReisenLunaticEyes(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+    if (opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.cx;
+        const dy = y - data.cy;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            opponent.confuseTimer = Math.max(opponent.confuseTimer || 0, 2.6);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 2.6);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.5);
+            if (!data.affected.includes(opponent)) data.affected.push(opponent);
+        }
+    }
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _tickHitEffects(effects) {
+    for (let i = effects.length - 1; i >= 0; i--) {
+        effects[i].timer--;
+        if (effects[i].timer <= 0) effects.splice(i, 1);
+    }
+}
+
 // ===================== DRAW SKILL EFFECTS =====================
 
 /** Draw all active skill effects */
@@ -998,6 +1562,30 @@ export function drawSkill(fighter, ctx) {
                 case 0: _drawYoumuSpiritSlash(fighter, ctx, fighter.skills[i].data); break;
                 case 1: _drawYoumuGhostBlade(fighter, ctx, fighter.skills[i].data); break;
                 case 3: _drawYoumuGhostStep(fighter, ctx, fighter.skills[i].data); break;
+            }
+        } else if (fighter.name === 'sanae') {
+            switch (i) {
+                case 0: _drawSanaeWind(ctx, fighter.skills[i].data); break;
+                case 1: _drawSanaeMiracleStar(ctx, fighter.skills[i].data); break;
+                case 3: _drawSanaePrayer(fighter, ctx, fighter.skills[i].data); break;
+            }
+        } else if (fighter.name === 'flandre') {
+            switch (i) {
+                case 0: _drawFlandreLaevatein(ctx, fighter.skills[i].data); break;
+                case 1: _drawFlandreDestructionEye(ctx, fighter.skills[i].data); break;
+                case 3: _drawFlandreFourOfAKind(fighter, ctx, fighter.skills[i].data); break;
+            }
+        } else if (fighter.name === 'sakuya') {
+            switch (i) {
+                case 0: _drawSakuyaKnifeArray(ctx, fighter.skills[i].data); break;
+                case 1: _drawSakuyaKillingDoll(ctx, fighter.skills[i].data); break;
+                case 3: _drawSakuyaWorld(ctx, fighter.skills[i].data); break;
+            }
+        } else if (fighter.name === 'reisen') {
+            switch (i) {
+                case 0: _drawReisenLunarBeam(fighter, ctx, fighter.skills[i].data); break;
+                case 1: _drawReisenMindWave(ctx, fighter.skills[i].data); break;
+                case 3: _drawReisenLunaticEyes(ctx, fighter.skills[i].data); break;
             }
         }
     }
@@ -1496,6 +2084,286 @@ function _drawYoumuGhostStep(fighter, ctx, data) {
             ctx.ellipse(particle.x, particle.y, particle.size, particle.size * 0.55, 0, 0, Math.PI * 2);
             ctx.fill();
         }
+        ctx.restore();
+    }
+}
+
+// ---- NEW CHARACTER DRAW ----
+
+function _drawSanaeWind(ctx, data) {
+    for (const blade of data.blades || []) {
+        if (!blade.active) continue;
+        ctx.save();
+        ctx.translate(blade.x, blade.y);
+        ctx.rotate(Math.atan2(blade.vy, blade.vx));
+        ctx.strokeStyle = '#7df5bd';
+        ctx.shadowColor = '#7df5bd';
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(0, 0, 28 + Math.sin(blade.frame * 0.2) * 4, -0.8, 0.8);
+        ctx.stroke();
+        ctx.restore();
+    }
+    _drawSparkEffects(ctx, data.hitEffects, '#7df5bd');
+}
+
+function _drawSanaeMiracleStar(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = p < 0.15 ? p / 0.15 : 1 - Math.max(0, p - 0.82) / 0.18;
+    ctx.strokeStyle = '#ffe86b';
+    ctx.fillStyle = 'rgba(255, 232, 107, 0.18)';
+    ctx.shadowColor = '#9affd2';
+    ctx.shadowBlur = 22;
+    const radius = 32 + p * 58;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 5;
+        const r = i % 2 === 0 ? radius : radius * 0.45;
+        const x = data.x + Math.cos(a) * r;
+        const y = data.y - 70 + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(125, 245, 189, 0.16)';
+    ctx.fillRect(data.x - 45, data.y - 160, 90, 205);
+    ctx.restore();
+}
+
+function _drawSanaePrayer(fighter, ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = 1 - p * 0.4;
+    ctx.strokeStyle = data.miracle === 'heal' ? '#9affd2' : (data.miracle === 'cooldown' ? '#68b8ff' : '#ffe86b');
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(fighter.cx, fighter.cy - fighter.hurtboxH / 2, 38 + i * 22 + p * 24, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function _drawFlandreLaevatein(ctx, data) {
+    const slash = data.slash;
+    if (!slash || !slash.active) return;
+    ctx.save();
+    ctx.translate(slash.x, slash.y);
+    ctx.scale(slash.dir, 1);
+    ctx.strokeStyle = '#ff4a3f';
+    ctx.shadowColor = '#ff4a3f';
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 11;
+    ctx.beginPath();
+    ctx.moveTo(-46, 34);
+    ctx.quadraticCurveTo(6, -38, 62, -14);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffcc66';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawFlandreDestructionEye(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = p < 0.7 ? 0.7 : 1 - (p - 0.7) / 0.3;
+    ctx.strokeStyle = p < 0.65 ? '#ff9a2f' : '#ff3344';
+    ctx.shadowColor = '#ff3344';
+    ctx.shadowBlur = 22;
+    ctx.lineWidth = 3 + p * 5;
+    for (let i = 0; i < 9; i++) {
+        const a = i * Math.PI * 2 / 9 + p * 1.7;
+        ctx.beginPath();
+        ctx.moveTo(data.x, data.y);
+        ctx.lineTo(data.x + Math.cos(a) * data.radius * p, data.y + Math.sin(a) * data.radius * p);
+        ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.radius * p, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawFlandreFourOfAKind(fighter, ctx, data) {
+    const p = data.timer / data.duration;
+    for (const clone of data.clones || []) {
+        ctx.save();
+        ctx.globalAlpha = 0.28 + Math.sin(data.timer * 8 + clone.phase) * 0.08;
+        ctx.fillStyle = '#f06cff';
+        ctx.shadowColor = '#ff3344';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.ellipse(
+            fighter.cx + clone.ox + Math.sin(data.timer * 4 + clone.phase) * 10,
+            fighter.cy - fighter.hurtboxH / 2 + clone.oy,
+            26 + p * 4,
+            46,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function _drawSakuyaKnifeArray(ctx, data) {
+    for (const knife of data.knives || []) {
+        if (!knife.active) continue;
+        _drawKnife(ctx, knife.x, knife.y, Math.atan2(knife.vy, knife.vx));
+    }
+    _drawSparkEffects(ctx, data.hitEffects, '#dcefff');
+}
+
+function _drawSakuyaKillingDoll(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = 1 - p * 0.35;
+    ctx.strokeStyle = '#dcefff';
+    ctx.shadowColor = '#7fc9ff';
+    ctx.shadowBlur = 20;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(data.x - 70, data.y - 50);
+    ctx.lineTo(data.x + 70, data.y + 50);
+    ctx.moveTo(data.x + 70, data.y - 50);
+    ctx.lineTo(data.x - 70, data.y + 50);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+        const ox = -58 + i * 23;
+        _drawKnife(ctx, data.x + ox, data.y - 44 + i * 18, data.dir > 0 ? 0 : Math.PI);
+    }
+    ctx.restore();
+}
+
+function _drawSakuyaWorld(ctx, data) {
+    const p = data.timer / data.duration;
+    ctx.save();
+    ctx.globalAlpha = 0.25 + Math.sin(data.timer * 8) * 0.08;
+    ctx.strokeStyle = '#d8f2ff';
+    ctx.shadowColor = '#7fc9ff';
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, 95 + p * 45, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI * 2 / 12 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(data.x + Math.cos(a) * 78, data.y + Math.sin(a) * 78);
+        ctx.lineTo(data.x + Math.cos(a) * 88, data.y + Math.sin(a) * 88);
+        ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(data.x, data.y);
+    ctx.lineTo(data.x + Math.cos(-Math.PI / 2 + p * 0.2) * 62, data.y + Math.sin(-Math.PI / 2 + p * 0.2) * 62);
+    ctx.moveTo(data.x, data.y);
+    ctx.lineTo(data.x + Math.cos(-Math.PI / 2 + p * 0.6) * 42, data.y + Math.sin(-Math.PI / 2 + p * 0.6) * 42);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawReisenLunarBeam(fighter, ctx, data) {
+    if (data.phase === 'charge') {
+        ctx.save();
+        ctx.strokeStyle = '#ff445f';
+        ctx.shadowColor = '#ff445f';
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(fighter.cx, data.aimY, 24 + data.chargeTimer * 28, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        return;
+    }
+    if (data.phase !== 'fire') return;
+    const rect = calcBeamRect(fighter, data.beamDir, 28, 900, data.aimY);
+    ctx.save();
+    const grad = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y);
+    grad.addColorStop(0, 'rgba(255, 68, 95, 0.15)');
+    grad.addColorStop(0.5, 'rgba(255, 80, 170, 0.85)');
+    grad.addColorStop(1, 'rgba(99, 109, 255, 0.2)');
+    ctx.fillStyle = grad;
+    ctx.shadowColor = '#ff445f';
+    ctx.shadowBlur = 20;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(rect.x, rect.y + rect.h / 2 - 2, rect.w, 4);
+    ctx.restore();
+}
+
+function _drawReisenMindWave(ctx, data) {
+    const wave = data.wave;
+    if (!wave || !wave.active) return;
+    ctx.save();
+    ctx.strokeStyle = '#636dff';
+    ctx.shadowColor = '#ff5fa8';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.ellipse(wave.x - wave.dir * i * 18, wave.y, 38 + i * 10, 25 + Math.sin(wave.frame * 0.18 + i) * 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function _drawReisenLunaticEyes(ctx, data) {
+    const p = data.timer / data.duration;
+    ctx.save();
+    ctx.globalAlpha = 0.72 - p * 0.22;
+    ctx.strokeStyle = '#ff5fa8';
+    ctx.shadowColor = '#ff445f';
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.ellipse(data.cx, data.cy, data.radius * (0.28 + i * 0.11), data.radius * 0.17, i * Math.PI / 6 + data.timer, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function _drawKnife(ctx, x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = '#eef7ff';
+    ctx.strokeStyle = '#7fc9ff';
+    ctx.shadowColor = '#dcefff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(24, 0);
+    ctx.lineTo(-8, -5);
+    ctx.lineTo(-2, 0);
+    ctx.lineTo(-8, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawSparkEffects(ctx, effects = [], color = '#ffffff') {
+    for (const effect of effects) {
+        const alpha = Math.max(0, effect.timer / 16);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, 26 * (1 - alpha) + 8, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.restore();
     }
 }

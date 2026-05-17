@@ -13,7 +13,10 @@ export function checkHit(attacker, target) {
 
     if (rectsOverlap(hitbox, hurtbox)) {
         attacker._atkHit = true;
-        target.damage(10);
+        const bonus = attacker.nextAttackBonus || 0;
+        const damage = (attacker.attackDamage || 10) + bonus;
+        attacker.nextAttackBonus = 0;
+        target.damage(damage);
         AudioManager.play('sfx_hit');
         AudioManager.play('sfx_damage', 0.3);
 
@@ -21,7 +24,7 @@ export function checkHit(attacker, target) {
             x: target.cx,
             y: target.cy - (target.hurtboxH || 50) / 2,
             color: '#ffcc44',
-            shake: 10 * 0.12,
+            shake: damage * 0.12,
             maxShake: 12
         });
     }

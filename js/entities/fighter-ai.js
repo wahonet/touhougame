@@ -155,8 +155,33 @@ function _detectThreats(fighter, opponent, platforms) {
         }
     }
 
-    // Check opponent projectiles (Reimu spell cards)
+    // Check opponent projectiles and orb-like threats
     var spellCards = opponent.skills[0];
+    if (spellCards.active && spellCards.data && (spellCards.data.projectiles || spellCards.data.shards || spellCards.data.jewels || spellCards.data.blades || spellCards.data.knives)) {
+        var projectiles = spellCards.data.projectiles || spellCards.data.shards || spellCards.data.jewels || spellCards.data.blades || spellCards.data.knives;
+        for (var i = 0; i < projectiles.length; i++) {
+            var proj = projectiles[i];
+            if (!proj.active) continue;
+            var pdx = proj.x - fighter.cx;
+            var pdy = proj.y - (fighter.cy - fighter.hurtboxH / 2);
+            var projDist = Math.sqrt(pdx * pdx + pdy * pdy);
+            if (projDist < 200) {
+                var pvx = proj.vx || (opponent.facing === 'right' ? 1 : -1);
+                var pvy = proj.vy || 0;
+                var dotProduct = pdx * pvx + pdy * pvy;
+                if (dotProduct < 0) {
+                    threat.level = 2;
+                    threat.type = 'projectile';
+                    threat.direction = pvx > 0 ? 1 : -1;
+                    threat.sourceX = proj.x;
+                    threat.sourceY = proj.y;
+                    return threat;
+                }
+            }
+        }
+    }
+
+    // Check opponent seal / area threats
     if (opponent.name === 'reimu' && spellCards.active && spellCards.data && spellCards.data.projectiles) {
         for (var i = 0; i < spellCards.data.projectiles.length; i++) {
             var proj = spellCards.data.projectiles[i];
@@ -199,9 +224,9 @@ function _detectThreats(fighter, opponent, platforms) {
         }
     }
 
-    // Check opponent star storm (Marisa skill 2)
+    // Check opponent star storm / burst fields
     var starSkill = opponent.skills[2];
-    if (opponent.name === 'marisa' && starSkill.active && starSkill.data && starSkill.data.stars) {
+    if (['marisa', 'reisen'].includes(opponent.name) && starSkill.active && starSkill.data && starSkill.data.stars) {
         for (var j = 0; j < starSkill.data.stars.length; j++) {
             var star = starSkill.data.stars[j];
             if (!star.active) continue;
@@ -214,6 +239,48 @@ function _detectThreats(fighter, opponent, platforms) {
                 threat.direction = star.vx > 0 ? 1 : -1;
                 threat.sourceX = star.x;
                 threat.sourceY = star.y;
+                return threat;
+            }
+        }
+    }
+
+    // Check delayed area skills that lock onto current or recent position.
+    for (var areaIndex = 1; areaIndex <= 3; areaIndex += 2) {
+        var areaSkill = opponent.skills[areaIndex];
+        var areaData = areaSkill && areaSkill.data;
+        if (!areaSkill || !areaSkill.active || !areaData || !areaData.radius) continue;
+
+        var areaX = areaData.x || areaData.cx;
+        var areaY = areaData.y || areaData.cy;
+        if (areaX === undefined || areaY === undefined) continue;
+
+        var adx = fighter.cx - areaX;
+        var ady = (fighter.cy - fighter.hurtboxH / 2) - areaY;
+        var safeRadius = areaData.radius + 35;
+        if (adx * adx + ady * ady <= safeRadius * safeRadius) {
+            threat.level = 2;
+            threat.type = 'projectile';
+            threat.direction = opponent.cx < fighter.cx ? 1 : -1;
+            threat.sourceX = areaX;
+            threat.sourceY = areaY;
+            return threat;
+        }
+    }
+
+    if (['cirno', 'yukari', 'suwako', 'kaguya'].includes(opponent.name) && starSkill.active && starSkill.data) {
+        var fieldData = starSkill.data;
+        var fieldX = fieldData.x || fieldData.cx;
+        var fieldY = fieldData.y || fieldData.cy;
+        var fieldRadius = fieldData.radius || 0;
+        if (fieldRadius > 0) {
+            var fdx = fighter.cx - fieldX;
+            var fdy = (fighter.cy - fighter.hurtboxH / 2) - fieldY;
+            if (fdx * fdx + fdy * fdy < fieldRadius * fieldRadius) {
+                threat.level = 2;
+                threat.type = 'projectile';
+                threat.direction = opponent.cx < fighter.cx ? 1 : -1;
+                threat.sourceX = fieldX;
+                threat.sourceY = fieldY;
                 return threat;
             }
         }
@@ -343,6 +410,12 @@ function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms
             return true;
         }
 
+        if (fighter.name === 'cirno' && fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && !fighter.invincible) {
+            fighter.activateSkill(3, opponent);
+            fighter.aiRetreatTimer = 22;
+            return true;
+        }
+
         // Seek HP pickup when critically low
         if (pickups && pickups.length > 0) {
             var hpPickup = _findBestPickup(fighter, pickups, 'hp');
@@ -401,7 +474,7 @@ function _pickComboSkill(fighter, opponent, dist, dy) {
         if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 450) return 0;
     }
 
-    if (['sanae', 'flandre', 'sakuya', 'reisen'].includes(fighter.name)) {
+    if (['sanae', 'flandre', 'sakuya', 'reisen', 'cirno', 'yukari', 'suwako', 'kaguya'].includes(fighter.name)) {
         if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 620) return 1;
         if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520) return 0;
     }
@@ -441,6 +514,14 @@ function _tryTacticalSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio, pl
         return _trySakuyaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
     } else if (fighter.name === 'reisen') {
         return _tryReisenSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'cirno') {
+        return _tryCirnoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'yukari') {
+        return _tryYukariSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'suwako') {
+        return _trySuwakoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
+    } else if (fighter.name === 'kaguya') {
+        return _tryKaguyaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio);
     }
     return false;
 }
@@ -683,6 +764,94 @@ function _tryReisenSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
         fighter.activateSkill(1, opponent);
         fighter.aiLastSkillUsed = 1;
         fighter.aiCooldown = 6;
+        return true;
+    }
+    return false;
+}
+
+function _tryCirnoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 420 && dy < 130 && Math.random() < 0.28) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 7;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520 && Math.random() < 0.32) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (hpRatio < 0.5 || dist < 180) && Math.random() < 0.3) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 4;
+        return true;
+    }
+    return false;
+}
+
+function _tryYukariSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 620 && Math.random() < 0.28) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 520 && Math.random() < 0.3) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (hpRatio < 0.45 || dist > 300) && Math.random() < 0.22) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    return false;
+}
+
+function _trySuwakoSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 540 && Math.random() < 0.32) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 7;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 460 && Math.random() < 0.3) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (hpRatio < 0.55 || dist < 260) && Math.random() < 0.24) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 5;
+        return true;
+    }
+    return false;
+}
+
+function _tryKaguyaSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
+    if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && dist < 580 && Math.random() < 0.28) {
+        fighter.activateSkill(1, opponent);
+        fighter.aiLastSkillUsed = 1;
+        fighter.aiCooldown = 8;
+        return true;
+    }
+    if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 500 && Math.random() < 0.3) {
+        fighter.activateSkill(0, opponent);
+        fighter.aiLastSkillUsed = 0;
+        fighter.aiCooldown = 6;
+        return true;
+    }
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && (oppHpRatio < 0.5 || dist > 260) && Math.random() < 0.24) {
+        fighter.activateSkill(3, opponent);
+        fighter.aiLastSkillUsed = 3;
+        fighter.aiCooldown = 5;
         return true;
     }
     return false;

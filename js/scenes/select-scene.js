@@ -11,6 +11,11 @@ import { BattleScene } from './battle-scene.js';
 import { PvEScene } from './pve-scene.js';
 
 const CHAR_IDS = CHARACTER_IDS;
+const GRID_COLS = 4;
+const GRID_SIZE = 96;
+const GRID_GAP = 12;
+const GRID_START_X = 56;
+const GRID_START_Y = 246;
 
 export const SelectScene = {
     selectedIndex: 0,
@@ -47,8 +52,22 @@ export const SelectScene = {
     },
 
     handleKey(key) {
-        if (/^[1-8]$/.test(key)) {
-            this.selectedIndex = Number(key) - 1;
+        const keyMap = {
+            '1': 0,
+            '2': 1,
+            '3': 2,
+            '4': 3,
+            '5': 4,
+            '6': 5,
+            '7': 6,
+            '8': 7,
+            '9': 8,
+            '0': 9,
+            '-': 10,
+            '=': 11
+        };
+        if (Object.prototype.hasOwnProperty.call(keyMap, key)) {
+            this.selectedIndex = keyMap[key];
             if (this.selectedIndex < CHAR_IDS.length) this._chooseCurrent();
         }
 
@@ -70,7 +89,7 @@ export const SelectScene = {
     },
 
     _moveSelection(dx, dy) {
-        const cols = 4;
+        const cols = GRID_COLS;
         const rows = Math.ceil(CHAR_IDS.length / cols);
         const col = this.selectedIndex % cols;
         const row = Math.floor(this.selectedIndex / cols);
@@ -184,16 +203,16 @@ export const SelectScene = {
     },
 
     _drawAvatarGrid(ctx) {
-        const size = 112;
-        const gap = 16;
-        const startX = 56;
-        const startY = 288;
+        const size = GRID_SIZE;
+        const gap = GRID_GAP;
+        const startX = GRID_START_X;
+        const startY = GRID_START_Y;
 
         for (let i = 0; i < CHAR_IDS.length; i++) {
             const charId = CHAR_IDS[i];
             const def = CHARACTER_DEFINITIONS[charId];
-            const col = i % 4;
-            const row = Math.floor(i / 4);
+            const col = i % GRID_COLS;
+            const row = Math.floor(i / GRID_COLS);
             const x = startX + col * (size + gap);
             const y = startY + row * (size + gap);
             const selected = i === this.selectedIndex;
@@ -211,7 +230,7 @@ export const SelectScene = {
             ctx.shadowBlur = 0;
 
             this._drawSquarePortrait(ctx, charId, x + 10, y + 10, size - 20, size - 38);
-            ctx.font = `bold 15px ${FONT_FAMILY}`;
+            ctx.font = `bold 13px ${FONT_FAMILY}`;
             ctx.textAlign = 'center';
             ctx.fillStyle = selected ? '#ffffff' : 'rgba(255,255,255,0.72)';
             ctx.fillText(`${i + 1}. ${def.displayName}`, x + size / 2, y + size - 13);
@@ -273,7 +292,7 @@ export const SelectScene = {
         ctx.font = `15px ${FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText('1-8/方向键选择  Enter确认  P进入PvE', W / 2, H - 30);
+        ctx.fillText('1-9 0 - = / 方向键选择  Enter确认  P进入PvE', W / 2, H - 30);
         ctx.restore();
 
         const pve = this._pveButtonRect();
@@ -314,13 +333,13 @@ export const SelectScene = {
     },
 
     _hitAvatar(mx, my) {
-        const size = 112;
-        const gap = 16;
-        const startX = 56;
-        const startY = 288;
+        const size = GRID_SIZE;
+        const gap = GRID_GAP;
+        const startX = GRID_START_X;
+        const startY = GRID_START_Y;
         for (let i = 0; i < CHAR_IDS.length; i++) {
-            const col = i % 4;
-            const row = Math.floor(i / 4);
+            const col = i % GRID_COLS;
+            const row = Math.floor(i / GRID_COLS);
             const x = startX + col * (size + gap);
             const y = startY + row * (size + gap);
             if (mx >= x && mx <= x + size && my >= y && my <= y + size) return i;

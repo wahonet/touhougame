@@ -158,6 +158,86 @@ export const CHARACTER_DEFINITIONS = {
             { name: '波长偏转', type: 'shield', maxCooldown: 20, description: '偏转弹幕并减伤，近身攻击只部分抵消。' },
             { name: '狂气之眼', type: 'utility', maxCooldown: 30, description: '大范围狂气波，命中后强制眩晕目标3秒。' }
         ]
+    },
+    cirno: {
+        id: 'cirno',
+        displayName: '琪露诺',
+        englishName: 'Cirno',
+        selectName: '琪露诺 (Cirno)',
+        uiName: '琪露诺 Cirno',
+        resultName: '琪露诺 (Cirno)',
+        accentColor: '#76d9ff',
+        selectAccentColor: '#44bfff',
+        maxHp: 820,
+        attackDamage: 10,
+        attackRange: 105,
+        skillColors: ['#8eeaff', '#4fb8ff', '#d9fbff', '#5d8dff'],
+        skills: [
+            { name: '冰晶散射', type: 'damage', maxCooldown: 13, description: '散射多枚冰晶，适合中距离压制。' },
+            { name: '完美冻结', type: 'damage', maxCooldown: 24, description: '在目标位置爆出寒霜，造成伤害并短暂冻结。' },
+            { name: '冰之护盾', type: 'shield', maxCooldown: 20, description: '凝出冰盾吸收伤害，持续一小段时间。' },
+            { name: '寒冰冲刺', type: 'utility', maxCooldown: 18, description: '向前快速滑行，期间短暂无敌并留下冰雾。' }
+        ]
+    },
+    yukari: {
+        id: 'yukari',
+        displayName: '八云紫',
+        englishName: 'Yukari',
+        selectName: '八云紫 (Yukari)',
+        uiName: '八云紫 Yukari',
+        resultName: '八云紫 (Yukari)',
+        accentColor: '#c48cff',
+        selectAccentColor: '#b36bff',
+        maxHp: 1100,
+        attackDamage: 9,
+        attackRange: 135,
+        skillColors: ['#b36bff', '#7b3fb2', '#f5d0ff', '#ffd166'],
+        skills: [
+            { name: '间隙之刃', type: 'damage', maxCooldown: 15, description: '从隙间射出多道紫色刃痕。' },
+            { name: '境界坍缩', type: 'damage', maxCooldown: 28, description: '在目标附近展开隙间，延迟后造成高额伤害。' },
+            { name: '境界护幕', type: 'shield', maxCooldown: 22, description: '用境界护幕吸收伤害。' },
+            { name: '神隐隙间', type: 'utility', maxCooldown: 30, description: '短距离穿梭到目标侧后方，并强化下一击。' }
+        ]
+    },
+    suwako: {
+        id: 'suwako',
+        displayName: '泄矢诹访子',
+        englishName: 'Suwako',
+        selectName: '泄矢诹访子 (Suwako)',
+        uiName: '诹访子 Suwako',
+        resultName: '诹访子 (Suwako)',
+        accentColor: '#d8b56a',
+        selectAccentColor: '#7ed957',
+        maxHp: 980,
+        attackDamage: 10,
+        attackRange: 115,
+        skillColors: ['#77dd77', '#7fd7ff', '#d7b15d', '#9b6cff'],
+        skills: [
+            { name: '蛙石跃击', type: 'damage', maxCooldown: 14, description: '召出跳跃蛙石向前弹跳攻击。' },
+            { name: '坤之御柱', type: 'damage', maxCooldown: 25, description: '在目标脚下升起水环与御符，造成范围伤害。' },
+            { name: '土著神护符', type: 'shield', maxCooldown: 21, description: '展开守护符阵吸收伤害。' },
+            { name: '洩矢之水域', type: 'utility', maxCooldown: 30, description: '制造水域减速并短暂束缚范围内敌人。' }
+        ]
+    },
+    kaguya: {
+        id: 'kaguya',
+        displayName: '蓬莱山辉夜',
+        englishName: 'Kaguya',
+        selectName: '蓬莱山辉夜 (Kaguya)',
+        uiName: '辉夜 Kaguya',
+        resultName: '辉夜 (Kaguya)',
+        accentColor: '#f5a4c7',
+        selectAccentColor: '#ffd166',
+        maxHp: 1020,
+        attackDamage: 9,
+        attackRange: 125,
+        skillColors: ['#ffd166', '#ff8ab3', '#9d7cff', '#7fd7ff'],
+        skills: [
+            { name: '蓬莱宝玉', type: 'damage', maxCooldown: 14, description: '发射宝玉弹，命中后绽放星辉。' },
+            { name: '龙颈之玉', type: 'damage', maxCooldown: 26, description: '召出五色宝玉阵，对目标区域造成爆发。' },
+            { name: '永夜屏障', type: 'shield', maxCooldown: 22, description: '以永夜之光构筑屏障吸收伤害。' },
+            { name: '难题宝具', type: 'utility', maxCooldown: 32, description: '在目标周围展开宝具阵，减速并增强下一击。' }
+        ]
     }
 };
 

@@ -100,7 +100,7 @@ export class Fighter {
         const sprites = Assets.sprites[this.name][dir];
 
         this.anims.idle = new Anim([sprites.stand], 0.1, true);
-        this.anims.walk = new Anim(sprites.walk, 0.1, true);
+        this.anims.walk = new Anim(sprites.walk, 0.06, true);
         this.anims.attack = new Anim(sprites.attack, 0.1, false);
         this.anims.dead = new Anim([sprites.stand], 0.5, true);
     }

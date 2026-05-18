@@ -42,6 +42,15 @@ const DIALOGUES = {
     ]
 };
 
+function createDefaultDialogue(char1, char2) {
+    return [
+        { speaker: char1, expr: 'normal', text: '异变的气息越来越近了。' },
+        { speaker: char2, expr: 'normal', text: '既然遇上了，就用弹幕确认一下吧。' },
+        { speaker: char1, expr: 'happy', text: '正合我意。' },
+        { speaker: char2, expr: 'angry', text: '开始吧。' }
+    ];
+}
+
 /**
  * Get dialogue lines for a character matchup
  * @param {string} char1 - First character ID
@@ -52,7 +61,7 @@ export function getDialogue(char1, char2) {
     // Sort alphabetically for consistent key lookup
     const sorted = [char1, char2].sort();
     const key = `${sorted[0]}_vs_${sorted[1]}`;
-    return DIALOGUES[key] || DIALOGUES.reimu_vs_marisa; // fallback to default
+    return DIALOGUES[key] || createDefaultDialogue(char1, char2);
 }
 
 // Backward compatible: export default dialogue for reimu vs marisa

@@ -1,6 +1,7 @@
 import { SPRITE_DISPLAY_H } from '../config/game-config.js';
 import { Assets } from './asset-store.js';
 import {
+    ACTION_FRAME_LIMITS,
     CHARACTER_IDS,
     EFFECT_FRAME_SETS,
     PORTRAIT_EXPRESSIONS
@@ -355,7 +356,7 @@ async function loadActionSprites() {
         }
 
         const walkFrames = [];
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= ACTION_FRAME_LIMITS.walk; i++) {
             const img = await loadImage(`action/${char}_walk${i}.png`);
             if (img) {
                 walkFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
@@ -370,7 +371,7 @@ async function loadActionSprites() {
         Assets.sprites[char].right.walk = walkFrames.map(frame => flipImage(frame));
 
         const attackFrames = [];
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= ACTION_FRAME_LIMITS.attack; i++) {
             const img = await loadImage(`action/${char}_attack${i}.png`);
             if (img) {
                 attackFrames.push(scaleImage(img, SPRITE_DISPLAY_H));

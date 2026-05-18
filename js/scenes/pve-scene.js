@@ -14,8 +14,8 @@ import { registerBattleHooks } from '../core/battle-events.js';
 import { Fighter } from '../entities/fighter.js';
 import { Enemy } from '../entities/enemy.js';
 import { Pickup } from '../entities/pickup.js';
-import { checkHit } from '../systems/combat.js';
-import { rectsOverlap, resolveCollision } from '../systems/collision.js';
+import { rectsOverlap } from '../systems/collision.js';
+import { applyPlayerSkillHitsToEnemy } from '../systems/pve-skill-hits.js';
 import {
     GROUND_Y
 } from '../data/stage-data.js';
@@ -64,7 +64,7 @@ export const PvEScene = {
     init(levelIndex) {
         const groundY = GROUND_Y;
 
-        // Load level config — default to first level (forest) for backward compat
+        // Default to the first level for backward compatibility.
         this.currentLevel = levelIndex || 0;
         this.levelConfig = PVE_LEVELS[this.currentLevel] || PVE_LEVELS[0];
         const level = this.levelConfig;
@@ -270,7 +270,7 @@ export const PvEScene = {
             }
 
             // Player skill projectiles hit enemies
-            this._checkPlayerSkillsHitEnemy(player, enemy);
+            applyPlayerSkillHitsToEnemy(player, enemy);
 
             // Remove dead enemies after fade
             if (enemy.state === 'dead' && enemy.deathTimer <= 0 && !enemy._counted) {
@@ -284,7 +284,7 @@ export const PvEScene = {
             }
         }
 
-        // --- Boss projectile → player collision ---
+        // --- Boss projectile to player collision ---
         for (const enemy of this.enemies) {
             if (!enemy.projectiles || enemy.projectiles.length === 0) continue;
             const hurtbox = player.getHurtbox();
@@ -405,12 +405,21 @@ export const PvEScene = {
     _getDummyOpponent() {
         // Always return the far-away dummy so Fighter's internal skill updates
         // don't deal double damage to enemies. All PvE enemy damage goes through
-        // _checkPlayerSkillsHitEnemy exclusively.
+        // systems/pve-skill-hits.js exclusively.
         if (!this._dummyOpponent) {
             this._dummyOpponent = {
-                cx: 99999, cy: GROUND_Y, hurtboxH: 100, state: 'idle',
+                cx: 99999,
+                cy: GROUND_Y,
+                hurtboxW: 50,
+                hurtboxH: 100,
+                state: 'idle',
                 _atkHit: false,
-                getHurtbox: () => ({ x: 99999, y: GROUND_Y - 100, w: 50, h: 100 }),
+                getHurtbox: () => ({
+                    x: this._dummyOpponent.cx - this._dummyOpponent.hurtboxW / 2,
+                    y: this._dummyOpponent.cy - this._dummyOpponent.hurtboxH,
+                    w: this._dummyOpponent.hurtboxW,
+                    h: this._dummyOpponent.hurtboxH
+                }),
                 getHitbox: () => null,
                 damage: () => {}
             };
@@ -421,314 +430,15 @@ export const PvEScene = {
         if (nearest) {
             this._dummyOpponent.cx = nearest.cx;
             this._dummyOpponent.cy = nearest.cy;
+            this._dummyOpponent.hurtboxW = nearest.width || 50;
+            this._dummyOpponent.hurtboxH = nearest.height || 100;
         } else {
             this._dummyOpponent.cx = 99999;
             this._dummyOpponent.cy = GROUND_Y;
+            this._dummyOpponent.hurtboxW = 50;
+            this._dummyOpponent.hurtboxH = 100;
         }
         return this._dummyOpponent;
-    },
-
-    /** Check player skill effects against an enemy */
-    _checkPlayerSkillsHitEnemy(player, enemy) {
-        if (!enemy || enemy.state === 'dead') return;
-
-        // Spell cards (Reimu skill 0)
-        const spellSkill = player.skills[0];
-        if (player.name === 'reimu' && spellSkill.active && spellSkill.data && spellSkill.data.projectiles) {
-            for (const proj of spellSkill.data.projectiles) {
-                if (!proj.active || proj.hitTarget) continue;
-                const hurtbox = enemy.getHurtbox();
-                if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
-                    proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
-                    proj.hitTarget = true;
-                    enemy.damage(15);
-                    spellSkill.data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
-                    proj.active = false;
-                }
-            }
-        }
-
-        // Seal strike (Reimu skill 1)
-        const sealSkill = player.skills[1];
-        if (player.name === 'reimu' && sealSkill.active && sealSkill.data && sealSkill.data.seal) {
-            const seal = sealSkill.data.seal;
-            if (seal.active && !seal.hit) {
-                const hurtbox = enemy.getHurtbox();
-                if (seal.x > hurtbox.x && seal.x < hurtbox.x + hurtbox.w &&
-                    seal.y > hurtbox.y && seal.y < hurtbox.y + hurtbox.h) {
-                    seal.hit = true;
-                    seal.active = false;
-                    enemy.damage(150);
-                    sealSkill.data.hitEffects.push({ x: seal.x, y: seal.y, timer: 30 });
-                }
-            }
-        }
-
-        // Lasers (Marisa skills 0 & 1)
-        for (let si = 0; si <= 1; si++) {
-            const laserSkill = player.skills[si];
-            if (player.name === 'marisa' && laserSkill.active && laserSkill.data && laserSkill.data.phase === 'fire') {
-                const beamHeight = si === 0 ? 40 : 64;
-                const beamRange = si === 0 ? 800 : 1000;
-                const tickDamage = si === 0 ? 20 : 100;
-                const beamRect = player._calcBeamRect(laserSkill.data.beamDir, beamHeight, beamRange, laserSkill.data.aimY);
-                if (beamRect) {
-                    const hurtbox = enemy.getHurtbox();
-                    if (rectsOverlap(beamRect, hurtbox)) {
-                        // Apply damage per tick — track via a Set on the data
-                        if (!laserSkill.data._hitEnemies) laserSkill.data._hitEnemies = new Set();
-                        const key = `${si}_${enemy.cx}_${enemy.cy}`;
-                        const tickIdx = laserSkill.data.damageTicks.filter(Boolean).length - 1;
-                        const tickKey = `${key}_${tickIdx}`;
-                        if (!laserSkill.data._hitEnemies.has(tickKey)) {
-                            laserSkill.data._hitEnemies.add(tickKey);
-                            enemy.damage(tickDamage);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Star storm (Marisa skill 2)
-        const starSkill = player.skills[2];
-        if (player.name === 'marisa' && starSkill.active && starSkill.data && starSkill.data.stars) {
-            for (const star of starSkill.data.stars) {
-                if (!star.active) continue;
-                const hurtbox = enemy.getHurtbox();
-                if (star.x > hurtbox.x && star.x < hurtbox.x + hurtbox.w &&
-                    star.y > hurtbox.y && star.y < hurtbox.y + hurtbox.h) {
-                    if (!star.hitTargets.includes(enemy)) {
-                        star.hitTargets.push(enemy);
-                        enemy.stunTimer = Math.max(enemy.stunTimer || 0, 3);
-                        star.active = false;
-                    }
-                }
-            }
-        }
-
-        // ---- YUYUKO SKILLS ----
-
-        // Soul Butterfly (Yuyuko skill 0) - spread projectiles
-        const yuyukoSkill0 = player.skills[0];
-        if (player.name === 'yuyuko' && yuyukoSkill0.active && yuyukoSkill0.data && yuyukoSkill0.data.projectiles) {
-            for (const proj of yuyukoSkill0.data.projectiles) {
-                if (!proj.active || proj.hitTarget) continue;
-                const hurtbox = enemy.getHurtbox();
-                if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
-                    proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
-                    proj.hitTarget = true;
-                    proj.active = false;
-                    enemy.damage(18);
-                    yuyukoSkill0.data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
-                }
-            }
-        }
-
-        // Death Invitation (Yuyuko skill 1) - homing orb
-        const yuyukoSkill1 = player.skills[1];
-        if (player.name === 'yuyuko' && yuyukoSkill1.active && yuyukoSkill1.data && yuyukoSkill1.data.orb) {
-            const orb = yuyukoSkill1.data.orb;
-            if (orb.active && !orb.hit) {
-                const hurtbox = enemy.getHurtbox();
-                if (orb.x > hurtbox.x && orb.x < hurtbox.x + hurtbox.w &&
-                    orb.y > hurtbox.y && orb.y < hurtbox.y + hurtbox.h) {
-                    orb.hit = true;
-                    orb.active = false;
-                    enemy.damage(140);
-                    yuyukoSkill1.data.hitEffects.push({ x: orb.x, y: orb.y, timer: 30 });
-                }
-            }
-        }
-
-        // Cherry Blossom Storm (Yuyuko skill 3) - slow field, no damage
-        const yuyukoSkill3 = player.skills[3];
-        if (player.name === 'yuyuko' && yuyukoSkill3.active && yuyukoSkill3.data) {
-            const data = yuyukoSkill3.data;
-            const hurtbox = enemy.getHurtbox();
-            const ecx = hurtbox.x + hurtbox.w / 2;
-            const ecy = hurtbox.y + hurtbox.h / 2;
-            const dx = ecx - data.cx;
-            const dy = ecy - data.cy;
-            if (dx * dx + dy * dy <= data.radius * data.radius) {
-                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.35);
-                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.25);
-                if (!data._pveSnaredEnemies) data._pveSnaredEnemies = new Set();
-                if (!data._pveSnaredEnemies.has(enemy)) {
-                    data._pveSnaredEnemies.add(enemy);
-                    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 1.2);
-                }
-            }
-        }
-
-        // ---- YOUMU SKILLS ----
-
-        // Spirit Slash (Youmu skill 0) - homing half-spirit
-        const youmuSkill0 = player.skills[0];
-        if (player.name === 'youmu' && youmuSkill0.active && youmuSkill0.data && youmuSkill0.data.spirit) {
-            const spirit = youmuSkill0.data.spirit;
-            const hurtbox = enemy.getHurtbox();
-            if (spirit.active && !spirit.hit && spirit.x > hurtbox.x && spirit.x < hurtbox.x + hurtbox.w &&
-                spirit.y > hurtbox.y && spirit.y < hurtbox.y + hurtbox.h) {
-                spirit.hit = true;
-                spirit.active = false;
-                enemy.damage(90);
-                youmuSkill0.data.hitEffects.push({ x: spirit.x, y: spirit.y, timer: 24 });
-            }
-        }
-
-        // Ghost Blade (Youmu skill 1) - returning blade
-        const youmuSkill1 = player.skills[1];
-        if (player.name === 'youmu' && youmuSkill1.active && youmuSkill1.data && youmuSkill1.data.blade) {
-            const data = youmuSkill1.data;
-            const blade = data.blade;
-            const bladeRect = { x: blade.x - 28, y: blade.y - 28, w: 56, h: 56 };
-            const hurtbox = enemy.getHurtbox();
-            if (blade.active && rectsOverlap(bladeRect, hurtbox)) {
-                if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
-                if (!data._pveHitEnemies.has(enemy)) {
-                    data._pveHitEnemies.add(enemy);
-                    enemy.damage(120);
-                }
-            }
-        }
-
-        // ---- SANAE SKILLS ----
-        const sanaeSkill0 = player.skills[0];
-        if (player.name === 'sanae' && sanaeSkill0.active && sanaeSkill0.data && sanaeSkill0.data.blades) {
-            for (const blade of sanaeSkill0.data.blades) {
-                if (!blade.active || blade.hit) continue;
-                const bladeRect = { x: blade.x - 28, y: blade.y - 22, w: 56, h: 44 };
-                if (rectsOverlap(bladeRect, enemy.getHurtbox())) {
-                    blade.hit = true;
-                    blade.active = false;
-                    enemy.damage(42);
-                    enemy.velocityX = (enemy.velocityX || 0) + Math.sign(blade.vx) * 3;
-                    sanaeSkill0.data.hitEffects.push({ x: blade.x, y: blade.y, timer: 16 });
-                }
-            }
-        }
-
-        const sanaeSkill1 = player.skills[1];
-        if (player.name === 'sanae' && sanaeSkill1.active && sanaeSkill1.data && sanaeSkill1.data.timer >= 0.62) {
-            const data = sanaeSkill1.data;
-            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
-            const starRect = { x: data.x - 62, y: data.y - 145, w: 124, h: 190 };
-            if (!data._pveHitEnemies.has(enemy) && rectsOverlap(starRect, enemy.getHurtbox())) {
-                data._pveHitEnemies.add(enemy);
-                enemy.damage(145);
-                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.35);
-            }
-        }
-
-        // ---- FLANDRE SKILLS ----
-        const flandreSkill0 = player.skills[0];
-        if (player.name === 'flandre' && flandreSkill0.active && flandreSkill0.data && flandreSkill0.data.slash) {
-            const slash = flandreSkill0.data.slash;
-            if (slash.active && !slash._pveHit) {
-                const slashRect = { x: slash.x - 52, y: slash.y - 44, w: 104, h: 88 };
-                if (rectsOverlap(slashRect, enemy.getHurtbox())) {
-                    slash._pveHit = true;
-                    slash.active = false;
-                    enemy.damage(120);
-                }
-            }
-        }
-
-        const flandreSkill1 = player.skills[1];
-        if (player.name === 'flandre' && flandreSkill1.active && flandreSkill1.data && flandreSkill1.data.timer >= 0.75) {
-            const data = flandreSkill1.data;
-            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
-            const hb = enemy.getHurtbox();
-            const ecx = hb.x + hb.w / 2;
-            const ecy = hb.y + hb.h / 2;
-            const dx = ecx - data.x;
-            const dy = ecy - data.y;
-            if (!data._pveHitEnemies.has(enemy) && dx * dx + dy * dy <= data.radius * data.radius) {
-                data._pveHitEnemies.add(enemy);
-                enemy.damage(180);
-                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.5);
-            }
-        }
-
-        // ---- SAKUYA SKILLS ----
-        const sakuyaSkill0 = player.skills[0];
-        if (player.name === 'sakuya' && sakuyaSkill0.active && sakuyaSkill0.data && sakuyaSkill0.data.knives) {
-            for (const knife of sakuyaSkill0.data.knives) {
-                if (!knife.active || knife.hit) continue;
-                const knifeRect = { x: knife.x - 18, y: knife.y - 6, w: 36, h: 12 };
-                if (rectsOverlap(knifeRect, enemy.getHurtbox())) {
-                    knife.hit = true;
-                    knife.active = false;
-                    enemy.damage(24);
-                    sakuyaSkill0.data.hitEffects.push({ x: knife.x, y: knife.y, timer: 10 });
-                }
-            }
-        }
-
-        const sakuyaSkill1 = player.skills[1];
-        if (player.name === 'sakuya' && sakuyaSkill1.active && sakuyaSkill1.data && sakuyaSkill1.data.timer >= 0.18) {
-            const data = sakuyaSkill1.data;
-            if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
-            const crossRect = { x: data.x - 70, y: data.y - 58, w: 140, h: 116 };
-            if (!data._pveHitEnemies.has(enemy) && rectsOverlap(crossRect, enemy.getHurtbox())) {
-                data._pveHitEnemies.add(enemy);
-                enemy.damage(150);
-                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.55);
-            }
-        }
-
-        const sakuyaSkill3 = player.skills[3];
-        if (player.name === 'sakuya' && sakuyaSkill3.active) {
-            enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.2);
-        }
-
-        // ---- REISEN SKILLS ----
-        const reisenSkill0 = player.skills[0];
-        if (player.name === 'reisen' && reisenSkill0.active && reisenSkill0.data && reisenSkill0.data.phase === 'fire') {
-            const data = reisenSkill0.data;
-            const beamRect = player._calcBeamRect(data.beamDir, 28, 900, data.aimY);
-            if (beamRect && rectsOverlap(beamRect, enemy.getHurtbox())) {
-                if (!data._pveHitEnemies) data._pveHitEnemies = new Set();
-                const tickIdx = data.damageTicks.filter(Boolean).length - 1;
-                const tickKey = `${enemy.cx}_${enemy.cy}_${tickIdx}`;
-                if (!data._pveHitEnemies.has(tickKey)) {
-                    data._pveHitEnemies.add(tickKey);
-                    enemy.damage(22);
-                }
-            }
-        }
-
-        const reisenSkill1 = player.skills[1];
-        if (player.name === 'reisen' && reisenSkill1.active && reisenSkill1.data && reisenSkill1.data.wave) {
-            const wave = reisenSkill1.data.wave;
-            const waveRect = { x: wave.x - 42, y: wave.y - 32, w: 84, h: 64 };
-            if (wave.active && !wave.hitTargets.includes(enemy) && rectsOverlap(waveRect, enemy.getHurtbox())) {
-                wave.hitTargets.push(enemy);
-                enemy.damage(110);
-                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.8);
-                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 2);
-                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.6);
-            }
-        }
-
-        const reisenSkill3 = player.skills[3];
-        if (player.name === 'reisen' && reisenSkill3.active && reisenSkill3.data) {
-            const data = reisenSkill3.data;
-            const hb = enemy.getHurtbox();
-            const ecx = hb.x + hb.w / 2;
-            const ecy = hb.y + hb.h / 2;
-            const dx = ecx - data.cx;
-            const dy = ecy - data.cy;
-            if (dx * dx + dy * dy <= data.radius * data.radius) {
-                if (!data._pveStunnedEnemies) data._pveStunnedEnemies = new Set();
-                if (!data._pveStunnedEnemies.has(enemy)) {
-                    data._pveStunnedEnemies.add(enemy);
-                    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 3);
-                    enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.8);
-                    enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.35);
-                }
-            }
-        }
     },
 
     draw(ctx) {

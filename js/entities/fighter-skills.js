@@ -9,6 +9,88 @@ import { Game } from '../core/game-state.js';
 import { emitHitImpact } from '../core/battle-events.js';
 import { rectsOverlap } from '../systems/collision.js';
 
+const drawDataOnly = draw => (fighter, ctx, data) => draw(ctx, data);
+const updateSkillOnly = update => (fighter, skill, dt) => update(skill, dt);
+
+const SKILL_REGISTRY = {
+    reimu: [
+        { activate: _activateReimuSpellCards, update: _updateReimuSpellCards, draw: _drawReimuSpellCards },
+        { activate: _activateReimuSealStrike, update: _updateReimuSealStrike, draw: _drawReimuSealStrike },
+        { activate: _activateReimuBarrier, update: _updateReimuBarrier },
+        { activate: _activateReimuFlight, update: _updateReimuFlight }
+    ],
+    marisa: [
+        { activate: _activateMarisaLaser, update: _updateMarisaLaser, draw: _drawMarisaLaser },
+        { activate: _activateMarisaBigLaser, update: _updateMarisaBigLaser, draw: _drawMarisaBigLaser },
+        { activate: _activateMarisaStarStorm, update: _updateMarisaStarStorm, draw: _drawMarisaStarStorm },
+        { activate: _activateMarisaBarrier, update: _updateMarisaBarrier }
+    ],
+    yuyuko: [
+        { activate: _activateYuyukoSoulButterfly, update: _updateYuyukoSoulButterfly, draw: _drawYuyukoSoulButterfly },
+        { activate: _activateYuyukoDeathInvitation, update: _updateYuyukoDeathInvitation, draw: _drawYuyukoDeathInvitation },
+        { activate: _activateYuyukoSpiritGuide, update: _updateYuyukoSpiritGuide },
+        { activate: _activateYuyukoCherryBlossomStorm, update: _updateYuyukoCherryBlossomStorm, draw: _drawYuyukoCherryBlossomStorm }
+    ],
+    youmu: [
+        { activate: _activateYoumuSpiritSlash, update: _updateYoumuSpiritSlash, draw: _drawYoumuSpiritSlash },
+        { activate: _activateYoumuGhostBlade, update: _updateYoumuGhostBlade, draw: _drawYoumuGhostBlade },
+        { activate: _activateYoumuHalfSpiritShield, update: _updateYoumuHalfSpiritShield },
+        { activate: _activateYoumuGhostStep, update: _updateYoumuGhostStep, draw: _drawYoumuGhostStep }
+    ],
+    sanae: [
+        { activate: _activateSanaeWind, update: _updateSanaeWind, draw: drawDataOnly(_drawSanaeWind) },
+        { activate: _activateSanaeMiracleStar, update: _updateSanaeMiracleStar, draw: drawDataOnly(_drawSanaeMiracleStar) },
+        { activate: _activateSanaeMoriyaWard, update: _updateGenericShield },
+        { activate: _activateSanaeMiraclePrayer, update: updateSkillOnly(_updateTimedAura), draw: _drawSanaePrayer }
+    ],
+    flandre: [
+        { activate: _activateFlandreLaevatein, update: _updateFlandreLaevatein, draw: drawDataOnly(_drawFlandreLaevatein) },
+        { activate: _activateFlandreDestructionEye, update: _updateFlandreDestructionEye, draw: drawDataOnly(_drawFlandreDestructionEye) },
+        { activate: _activateFlandreScarletShield, update: _updateGenericShield },
+        { activate: _activateFlandreFourOfAKind, update: updateSkillOnly(_updateTimedAura), draw: _drawFlandreFourOfAKind }
+    ],
+    sakuya: [
+        { activate: _activateSakuyaKnifeArray, update: _updateSakuyaKnifeArray, draw: drawDataOnly(_drawSakuyaKnifeArray) },
+        { activate: _activateSakuyaKillingDoll, update: _updateSakuyaKillingDoll, draw: drawDataOnly(_drawSakuyaKillingDoll) },
+        { activate: _activateSakuyaWatchWard, update: _updateGenericShield },
+        { activate: _activateSakuyaWorld, update: _updateSakuyaWorld, draw: drawDataOnly(_drawSakuyaWorld) }
+    ],
+    reisen: [
+        { activate: _activateReisenLunarBeam, update: _updateReisenLunarBeam, draw: _drawReisenLunarBeam },
+        { activate: _activateReisenMindWave, update: _updateReisenMindWave, draw: drawDataOnly(_drawReisenMindWave) },
+        { activate: _activateReisenWaveShield, update: _updateGenericShield },
+        { activate: _activateReisenLunaticEyes, update: _updateReisenLunaticEyes, draw: drawDataOnly(_drawReisenLunaticEyes) }
+    ],
+    cirno: [
+        { activate: _activateCirnoIcicleScatter, update: _updateCirnoIcicleScatter, draw: drawDataOnly(_drawCirnoIcicleScatter) },
+        { activate: _activateCirnoPerfectFreeze, update: _updateCirnoPerfectFreeze, draw: drawDataOnly(_drawCirnoPerfectFreeze) },
+        { activate: _activateCirnoIceShield, update: _updateGenericShield },
+        { activate: _activateCirnoFrostDash, update: _updateCirnoFrostDash, draw: _drawCirnoFrostDash }
+    ],
+    yukari: [
+        { activate: _activateYukariGapBlades, update: _updateYukariGapBlades, draw: drawDataOnly(_drawYukariGapBlades) },
+        { activate: _activateYukariBoundaryCollapse, update: _updateYukariBoundaryCollapse, draw: drawDataOnly(_drawYukariBoundaryCollapse) },
+        { activate: _activateYukariBoundaryWard, update: _updateGenericShield },
+        { activate: _activateYukariGapStep, update: _updateYukariGapStep, draw: _drawYukariGapStep }
+    ],
+    suwako: [
+        { activate: _activateSuwakoFrogStone, update: _updateSuwakoFrogStone, draw: drawDataOnly(_drawSuwakoFrogStone) },
+        { activate: _activateSuwakoMishagujiPillar, update: _updateSuwakoMishagujiPillar, draw: drawDataOnly(_drawSuwakoMishagujiPillar) },
+        { activate: _activateSuwakoNativeWard, update: _updateGenericShield },
+        { activate: _activateSuwakoWaterDomain, update: _updateSuwakoWaterDomain, draw: drawDataOnly(_drawSuwakoWaterDomain) }
+    ],
+    kaguya: [
+        { activate: _activateKaguyaJewelShot, update: _updateKaguyaJewelShot, draw: drawDataOnly(_drawKaguyaJewelShot) },
+        { activate: _activateKaguyaFiveJewels, update: _updateKaguyaFiveJewels, draw: drawDataOnly(_drawKaguyaFiveJewels) },
+        { activate: _activateKaguyaEternalWard, update: _updateGenericShield },
+        { activate: _activateKaguyaImpossibleRequest, update: _updateKaguyaImpossibleRequest, draw: _drawKaguyaImpossibleRequest }
+    ]
+};
+
+function getSkillEntry(characterId, index) {
+    return SKILL_REGISTRY[characterId]?.[index] || null;
+}
+
 // ===================== SKILL ACTIVATION =====================
 
 /**
@@ -21,66 +103,12 @@ export function activateSkill(fighter, index, opponent) {
     const skill = fighter.skills[index];
     if (skill.cooldown > 0 || skill.active || fighter.state === 'dead') return;
 
+    const entry = getSkillEntry(fighter.name, index);
+    if (!entry || !entry.activate) return;
+
     skill.active = true;
     skill.cooldown = skill.maxCooldown;
-
-    if (fighter.name === 'reimu') {
-        switch (index) {
-            case 0: _activateReimuSpellCards(fighter, skill); break;
-            case 1: _activateReimuSealStrike(fighter, skill, opponent); break;
-            case 2: _activateReimuBarrier(fighter, skill); break;
-            case 3: _activateReimuFlight(fighter, skill); break;
-        }
-    } else if (fighter.name === 'marisa') {
-        switch (index) {
-            case 0: _activateMarisaLaser(fighter, skill); break;
-            case 1: _activateMarisaBigLaser(fighter, skill); break;
-            case 2: _activateMarisaStarStorm(fighter, skill); break;
-            case 3: _activateMarisaBarrier(fighter, skill); break;
-        }
-    } else if (fighter.name === 'yuyuko') {
-        switch (index) {
-            case 0: _activateYuyukoSoulButterfly(fighter, skill); break;
-            case 1: _activateYuyukoDeathInvitation(fighter, skill, opponent); break;
-            case 2: _activateYuyukoSpiritGuide(fighter, skill); break;
-            case 3: _activateYuyukoCherryBlossomStorm(fighter, skill, opponent); break;
-        }
-    } else if (fighter.name === 'youmu') {
-        switch (index) {
-            case 0: _activateYoumuSpiritSlash(fighter, skill); break;
-            case 1: _activateYoumuGhostBlade(fighter, skill); break;
-            case 2: _activateYoumuHalfSpiritShield(fighter, skill); break;
-            case 3: _activateYoumuGhostStep(fighter, skill); break;
-        }
-    } else if (fighter.name === 'sanae') {
-        switch (index) {
-            case 0: _activateSanaeWind(fighter, skill); break;
-            case 1: _activateSanaeMiracleStar(fighter, skill, opponent); break;
-            case 2: _activateSanaeMoriyaWard(fighter, skill); break;
-            case 3: _activateSanaeMiraclePrayer(fighter, skill); break;
-        }
-    } else if (fighter.name === 'flandre') {
-        switch (index) {
-            case 0: _activateFlandreLaevatein(fighter, skill); break;
-            case 1: _activateFlandreDestructionEye(fighter, skill, opponent); break;
-            case 2: _activateFlandreScarletShield(fighter, skill); break;
-            case 3: _activateFlandreFourOfAKind(fighter, skill); break;
-        }
-    } else if (fighter.name === 'sakuya') {
-        switch (index) {
-            case 0: _activateSakuyaKnifeArray(fighter, skill); break;
-            case 1: _activateSakuyaKillingDoll(fighter, skill, opponent); break;
-            case 2: _activateSakuyaWatchWard(fighter, skill); break;
-            case 3: _activateSakuyaWorld(fighter, skill, opponent); break;
-        }
-    } else if (fighter.name === 'reisen') {
-        switch (index) {
-            case 0: _activateReisenLunarBeam(fighter, skill); break;
-            case 1: _activateReisenMindWave(fighter, skill); break;
-            case 2: _activateReisenWaveShield(fighter, skill); break;
-            case 3: _activateReisenLunaticEyes(fighter, skill, opponent); break;
-        }
-    }
+    entry.activate(fighter, skill, opponent);
 }
 
 // ---- REIMU SKILLS ----
@@ -637,6 +665,286 @@ function _activateReisenLunaticEyes(fighter, skill, opponent) {
     }
 }
 
+// ---- CIRNO SKILLS ----
+
+function _activateCirnoIcicleScatter(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = { shards: [], hitEffects: [] };
+    for (let i = 0; i < 7; i++) {
+        const angle = (-28 + i * 9.5) * Math.PI / 180;
+        skill.data.shards.push({
+            x: fighter.cx + dir * 38,
+            y: fighter.cy - fighter.hurtboxH * 0.58,
+            vx: Math.cos(angle) * 9.2 * dir,
+            vy: Math.sin(angle) * 5.2,
+            dir,
+            frame: i * 2,
+            active: true,
+            hit: false
+        });
+    }
+}
+
+function _activateCirnoPerfectFreeze(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 230,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 115,
+        timer: 0,
+        duration: 1.05,
+        hit: false,
+        crystals: Array.from({ length: 12 }, (_, i) => ({
+            angle: i * Math.PI * 2 / 12,
+            radius: 24 + Math.random() * 38,
+            size: 5 + Math.random() * 7
+        }))
+    };
+}
+
+function _activateCirnoIceShield(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 280,
+        maxHp: 280,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateCirnoFrostDash(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    fighter.invincible = true;
+    skill.data = {
+        dir,
+        timer: 0,
+        duration: 0.34,
+        trailParticles: []
+    };
+}
+
+// ---- YUKARI SKILLS ----
+
+function _activateYukariGapBlades(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = { blades: [], hitEffects: [] };
+    for (let i = 0; i < 5; i++) {
+        skill.data.blades.push({
+            x: fighter.cx + dir * (48 + i * 18),
+            y: fighter.cy - fighter.hurtboxH * (0.76 - i * 0.09),
+            vx: dir * (8.4 + i * 0.7),
+            vy: (i - 2) * 0.7,
+            dir,
+            frame: i * 4,
+            active: true,
+            hit: false
+        });
+    }
+}
+
+function _activateYukariBoundaryCollapse(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 260,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 145,
+        timer: 0,
+        duration: 1.25,
+        hit: false,
+        eyes: Array.from({ length: 7 }, (_, i) => ({
+            angle: i * Math.PI * 2 / 7,
+            offset: 42 + Math.random() * 48
+        }))
+    };
+}
+
+function _activateYukariBoundaryWard(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 340,
+        maxHp: 340,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateYukariGapStep(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const hb = _getActivationHurtbox(opponent);
+    fighter.invincible = true;
+    if (hb) {
+        fighter.cx = hb.x + hb.w / 2 - dir * 125;
+        fighter.cy = Math.min(fighter.groundY, Math.max(fighter.hurtboxH + 20, hb.y + hb.h));
+        fighter.setFacing(dir === 1 ? 'right' : 'left');
+        if (typeof fighter.clampToBounds === 'function') fighter.clampToBounds();
+    } else {
+        fighter.cx += dir * 260;
+        if (typeof fighter.clampToBounds === 'function') fighter.clampToBounds();
+    }
+    fighter.nextAttackBonus = Math.max(fighter.nextAttackBonus || 0, 40);
+    skill.data = {
+        timer: 0,
+        duration: 0.75,
+        x: fighter.cx,
+        y: fighter.cy - fighter.hurtboxH / 2,
+        rings: [
+            { radius: 28, phase: 0 },
+            { radius: 52, phase: 1.7 },
+            { radius: 76, phase: 3.1 }
+        ]
+    };
+}
+
+// ---- SUWAKO SKILLS ----
+
+function _activateSuwakoFrogStone(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = {
+        stone: {
+            x: fighter.cx + dir * 38,
+            y: fighter.cy - fighter.hurtboxH * 0.42,
+            vx: dir * 7.8,
+            vy: -6.5,
+            dir,
+            frame: 0,
+            active: true
+        },
+        hitEffects: [],
+        hitTargets: []
+    };
+}
+
+function _activateSuwakoMishagujiPillar(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 240,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 120,
+        timer: 0,
+        duration: 1.15,
+        hit: false
+    };
+}
+
+function _activateSuwakoNativeWard(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 320,
+        maxHp: 320,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateSuwakoWaterDomain(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        cx: target ? target.x + target.w / 2 : fighter.cx + dir * 210,
+        cy: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 190,
+        timer: 0,
+        duration: 3.2,
+        affected: [],
+        ripples: Array.from({ length: 5 }, (_, i) => ({ radius: 35 + i * 28, phase: i * 0.7 }))
+    };
+}
+
+// ---- KAGUYA SKILLS ----
+
+function _activateKaguyaJewelShot(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = {
+        jewels: [],
+        hitEffects: []
+    };
+    for (let i = 0; i < 5; i++) {
+        skill.data.jewels.push({
+            x: fighter.cx + dir * 36,
+            y: fighter.cy - fighter.hurtboxH * (0.76 - i * 0.08),
+            vx: dir * (8.5 + i * 0.35),
+            vy: (i - 2) * 0.55,
+            color: ['#ffd166', '#ff8ab3', '#9d7cff', '#7fd7ff', '#ffffff'][i],
+            frame: i * 5,
+            active: true,
+            hit: false
+        });
+    }
+}
+
+function _activateKaguyaFiveJewels(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    skill.data = {
+        x: target ? target.x + target.w / 2 : fighter.cx + dir * 250,
+        y: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 150,
+        timer: 0,
+        duration: 1.25,
+        hit: false,
+        jewels: Array.from({ length: 5 }, (_, i) => ({
+            angle: -Math.PI / 2 + i * Math.PI * 2 / 5,
+            color: ['#ffd166', '#ff8ab3', '#9d7cff', '#7fd7ff', '#7dff9a'][i]
+        }))
+    };
+}
+
+function _activateKaguyaEternalWard(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
+    fighter.shield = {
+        hp: 330,
+        maxHp: 330,
+        duration: 8,
+        timer: 0,
+        flashTimer: 0,
+        shatterTimer: 0
+    };
+    skill.data = { done: false };
+}
+
+function _activateKaguyaImpossibleRequest(fighter, skill, opponent) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_stars');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const target = _getActivationHurtbox(opponent);
+    fighter.nextAttackBonus = Math.max(fighter.nextAttackBonus || 0, 35);
+    skill.data = {
+        cx: target ? target.x + target.w / 2 : fighter.cx + dir * 220,
+        cy: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
+        radius: 175,
+        timer: 0,
+        duration: 2.8,
+        affected: [],
+        jewels: Array.from({ length: 6 }, (_, i) => ({
+            angle: i * Math.PI * 2 / 6,
+            radius: 70 + Math.random() * 55,
+            color: ['#ffd166', '#ff8ab3', '#9d7cff', '#7fd7ff', '#7dff9a', '#ffffff'][i]
+        }))
+    };
+}
+
 // ===================== BEAM RECT HELPERS =====================
 
 /** Get the beam rectangle for regular laser */
@@ -673,64 +981,8 @@ export function calcBeamRect(fighter, dir, beamHeight, beamRange, centerY) {
 /** Route skill update by index */
 export function updateSkillByIndex(fighter, index, dt, opponent) {
     const skill = fighter.skills[index];
-
-    if (fighter.name === 'reimu') {
-        switch (index) {
-            case 0: _updateReimuSpellCards(fighter, skill, dt, opponent); break;
-            case 1: _updateReimuSealStrike(fighter, skill, dt, opponent); break;
-            case 2: _updateReimuBarrier(fighter, skill, dt); break;
-            case 3: _updateReimuFlight(fighter, skill, dt); break;
-        }
-    } else if (fighter.name === 'marisa') {
-        switch (index) {
-            case 0: _updateMarisaLaser(fighter, skill, dt, opponent); break;
-            case 1: _updateMarisaBigLaser(fighter, skill, dt, opponent); break;
-            case 2: _updateMarisaStarStorm(fighter, skill, dt, opponent); break;
-            case 3: _updateMarisaBarrier(fighter, skill, dt); break;
-        }
-    } else if (fighter.name === 'yuyuko') {
-        switch (index) {
-            case 0: _updateYuyukoSoulButterfly(fighter, skill, dt, opponent); break;
-            case 1: _updateYuyukoDeathInvitation(fighter, skill, dt, opponent); break;
-            case 2: _updateYuyukoSpiritGuide(fighter, skill, dt); break;
-            case 3: _updateYuyukoCherryBlossomStorm(fighter, skill, dt, opponent); break;
-        }
-    } else if (fighter.name === 'youmu') {
-        switch (index) {
-            case 0: _updateYoumuSpiritSlash(fighter, skill, dt, opponent); break;
-            case 1: _updateYoumuGhostBlade(fighter, skill, dt, opponent); break;
-            case 2: _updateYoumuHalfSpiritShield(fighter, skill, dt); break;
-            case 3: _updateYoumuGhostStep(fighter, skill, dt); break;
-        }
-    } else if (fighter.name === 'sanae') {
-        switch (index) {
-            case 0: _updateSanaeWind(fighter, skill, dt, opponent); break;
-            case 1: _updateSanaeMiracleStar(fighter, skill, dt, opponent); break;
-            case 2: _updateGenericShield(fighter, skill); break;
-            case 3: _updateTimedAura(skill, dt); break;
-        }
-    } else if (fighter.name === 'flandre') {
-        switch (index) {
-            case 0: _updateFlandreLaevatein(fighter, skill, dt, opponent); break;
-            case 1: _updateFlandreDestructionEye(fighter, skill, dt, opponent); break;
-            case 2: _updateGenericShield(fighter, skill); break;
-            case 3: _updateTimedAura(skill, dt); break;
-        }
-    } else if (fighter.name === 'sakuya') {
-        switch (index) {
-            case 0: _updateSakuyaKnifeArray(fighter, skill, dt, opponent); break;
-            case 1: _updateSakuyaKillingDoll(fighter, skill, dt, opponent); break;
-            case 2: _updateGenericShield(fighter, skill); break;
-            case 3: _updateSakuyaWorld(fighter, skill, dt); break;
-        }
-    } else if (fighter.name === 'reisen') {
-        switch (index) {
-            case 0: _updateReisenLunarBeam(fighter, skill, dt, opponent); break;
-            case 1: _updateReisenMindWave(fighter, skill, dt, opponent); break;
-            case 2: _updateGenericShield(fighter, skill); break;
-            case 3: _updateReisenLunaticEyes(fighter, skill, dt, opponent); break;
-        }
-    }
+    const entry = getSkillEntry(fighter.name, index);
+    if (entry && entry.update) entry.update(fighter, skill, dt, opponent);
 }
 
 // ---- REIMU SKILL UPDATES ----
@@ -1543,6 +1795,372 @@ function _updateReisenLunaticEyes(fighter, skill, dt, opponent) {
     }
 }
 
+function _updateCirnoIcicleScatter(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    let anyActive = false;
+
+    for (const shard of data.shards || []) {
+        if (!shard.active) continue;
+        anyActive = true;
+
+        shard.x += shard.vx;
+        shard.y += shard.vy;
+        shard.vy += 0.16;
+        shard.frame++;
+
+        if (!shard.hit && opponent.state !== 'dead') {
+            const rect = { x: shard.x - 12, y: shard.y - 12, w: 24, h: 24 };
+            if (rectsOverlap(rect, opponent.getHurtbox())) {
+                shard.hit = true;
+                shard.active = false;
+                opponent.damage(14);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.18);
+                opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.35);
+                opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.75);
+                emitHitImpact({ x: shard.x, y: shard.y, color: '#8eeaff', shake: 2, maxShake: 6 });
+                data.hitEffects.push({ x: shard.x, y: shard.y, timer: 12 });
+            }
+        }
+
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (shard.frame > 90 || shard.x < -80 || shard.x > boundX + 80 || shard.y < -80 || shard.y > SCREEN_HEIGHT + 80) {
+            shard.active = false;
+        }
+    }
+
+    _tickHitEffects(data.hitEffects);
+
+    if (!anyActive && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateCirnoPerfectFreeze(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (!data.hit && data.timer >= 0.5 && opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.x;
+        const dy = y - data.y;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            data.hit = true;
+            opponent.damage(155);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 1.15);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.8);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.5);
+            emitHitImpact({ x: data.x, y: data.y, color: '#bfefff', shake: 6, maxShake: 10 });
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateCirnoFrostDash(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    const dashing = data.timer <= data.duration;
+    fighter.invincible = dashing;
+
+    if (dashing) {
+        fighter.cx += data.dir * 920 * dt;
+        if (typeof fighter.clampToBounds === 'function') fighter.clampToBounds();
+        data.trailParticles.push({
+            x: fighter.cx - data.dir * 12,
+            y: fighter.cy - fighter.hurtboxH / 2,
+            alpha: 0.65,
+            size: 12 + Math.random() * 10
+        });
+    }
+
+    if (!data.hit && opponent.state !== 'dead') {
+        const dashRect = {
+            x: fighter.cx - fighter.hurtboxW / 2 - 18,
+            y: fighter.cy - fighter.hurtboxH + 10,
+            w: fighter.hurtboxW + 36,
+            h: fighter.hurtboxH - 8
+        };
+        if (rectsOverlap(dashRect, opponent.getHurtbox())) {
+            data.hit = true;
+            opponent.damage(60);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.32);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.45);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.7);
+            emitHitImpact({ x: fighter.cx, y: fighter.cy - fighter.hurtboxH / 2, color: '#8eeaff', shake: 4, maxShake: 8 });
+        }
+    }
+
+    for (let i = data.trailParticles.length - 1; i >= 0; i--) {
+        data.trailParticles[i].alpha -= dt * 4.2;
+        if (data.trailParticles[i].alpha <= 0) {
+            data.trailParticles.splice(i, 1);
+        }
+    }
+
+    if (!dashing && data.trailParticles.length === 0) {
+        fighter.invincible = false;
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateYukariGapBlades(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    let anyActive = false;
+
+    for (const blade of data.blades || []) {
+        if (!blade.active) continue;
+        anyActive = true;
+
+        blade.x += blade.vx;
+        blade.y += blade.vy;
+        blade.frame++;
+
+        if (!blade.hit && opponent.state !== 'dead') {
+            const rect = { x: blade.x - 18, y: blade.y - 6, w: 36, h: 12 };
+            if (rectsOverlap(rect, opponent.getHurtbox())) {
+                blade.hit = true;
+                blade.active = false;
+                opponent.damage(24);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.22);
+                data.hitEffects.push({ x: blade.x, y: blade.y, timer: 12 });
+                emitHitImpact({ x: blade.x, y: blade.y, color: '#c48cff', shake: 3, maxShake: 6 });
+            }
+        }
+
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (blade.frame > 80 || blade.x < -80 || blade.x > boundX + 80) blade.active = false;
+    }
+
+    _tickHitEffects(data.hitEffects);
+
+    if (!anyActive && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateYukariBoundaryCollapse(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (!data.hit && data.timer >= 0.72 && opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.x;
+        const dy = y - data.y;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            data.hit = true;
+            opponent.damage(180);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.55);
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.55);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.55);
+            emitHitImpact({ x: data.x, y: data.y, color: '#b36bff', shake: 7, maxShake: 12 });
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateYukariGapStep(fighter, skill, dt) {
+    const data = skill.data;
+    data.timer += dt;
+    fighter.invincible = data.timer < data.duration * 0.5;
+
+    if (data.timer >= data.duration) {
+        fighter.invincible = false;
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSuwakoFrogStone(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    const stone = data.stone;
+    if (!stone || !stone.active) {
+        _tickHitEffects(data.hitEffects);
+        if ((data.hitEffects || []).length === 0) {
+            skill.active = false;
+            skill.data = {};
+        }
+        return;
+    }
+
+    stone.x += stone.vx;
+    stone.y += stone.vy;
+    stone.vy += 0.45;
+    stone.frame++;
+
+    if (!stone.hit && opponent.state !== 'dead') {
+        const rect = { x: stone.x - 18, y: stone.y - 18, w: 36, h: 36 };
+        if (rectsOverlap(rect, opponent.getHurtbox())) {
+            stone.hit = true;
+            stone.active = false;
+            opponent.damage(58);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.28);
+            data.hitEffects.push({ x: stone.x, y: stone.y, timer: 14 });
+            emitHitImpact({ x: stone.x, y: stone.y, color: '#7ed957', shake: 4, maxShake: 8 });
+        }
+    }
+
+    const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+    if (stone.x < -80 || stone.x > boundX + 80 || stone.y > fighter.groundY + 40 || stone.y < -120 || stone.frame > 120) {
+        stone.active = false;
+    }
+
+    _tickHitEffects(data.hitEffects);
+
+    if (!stone.active && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSuwakoMishagujiPillar(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (!data.hit && data.timer >= 0.5 && opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.x;
+        const dy = y - data.y;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            data.hit = true;
+            opponent.damage(165);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.45);
+            emitHitImpact({ x: data.x, y: data.y, color: '#7ed957', shake: 7, maxShake: 12 });
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateSuwakoWaterDomain(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.cx;
+        const dy = y - data.cy;
+        const inside = dx * dx + dy * dy <= data.radius * data.radius;
+
+        if (inside) {
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 1.0);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.6);
+            if (!data.affected.includes(opponent)) {
+                data.affected.push(opponent);
+                opponent.damage(34);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.2);
+                emitHitImpact({ x, y, color: '#7fd7ff', shake: 3, maxShake: 6 });
+            }
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateKaguyaJewelShot(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    let anyActive = false;
+
+    for (const jewel of data.jewels || []) {
+        if (!jewel.active) continue;
+        anyActive = true;
+
+        jewel.x += jewel.vx;
+        jewel.y += jewel.vy;
+        jewel.frame++;
+
+        if (!jewel.hit && opponent.state !== 'dead') {
+            const rect = { x: jewel.x - 12, y: jewel.y - 12, w: 24, h: 24 };
+            if (rectsOverlap(rect, opponent.getHurtbox())) {
+                jewel.hit = true;
+                jewel.active = false;
+                opponent.damage(16);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.16);
+                data.hitEffects.push({ x: jewel.x, y: jewel.y, timer: 12 });
+                emitHitImpact({ x: jewel.x, y: jewel.y, color: jewel.color || '#ffd166', shake: 3, maxShake: 6 });
+            }
+        }
+
+        const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+        if (jewel.frame > 90 || jewel.x < -80 || jewel.x > boundX + 80 || jewel.y < -80 || jewel.y > SCREEN_HEIGHT + 80) {
+            jewel.active = false;
+        }
+    }
+
+    _tickHitEffects(data.hitEffects);
+
+    if (!anyActive && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateKaguyaFiveJewels(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (!data.hit && data.timer >= 0.62 && opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.x;
+        const dy = y - data.y;
+        if (dx * dx + dy * dy <= data.radius * data.radius) {
+            data.hit = true;
+            opponent.damage(175);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.55);
+            emitHitImpact({ x: data.x, y: data.y, color: '#ffd166', shake: 7, maxShake: 12 });
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+function _updateKaguyaImpossibleRequest(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    if (opponent.state !== 'dead') {
+        const { x, y } = _targetCenter(opponent);
+        const dx = x - data.cx;
+        const dy = y - data.cy;
+        const inside = dx * dx + dy * dy <= data.radius * data.radius;
+
+        if (inside) {
+            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 1.2);
+            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.45);
+            if (!data.affected.includes(opponent) && data.timer >= 0.45) {
+                data.affected.push(opponent);
+                opponent.damage(52);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.3);
+                emitHitImpact({ x, y, color: '#9d7cff', shake: 5, maxShake: 10 });
+            }
+        }
+    }
+
+    if (data.timer >= data.duration) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
 function _tickHitEffects(effects) {
     for (let i = effects.length - 1; i >= 0; i--) {
         effects[i].timer--;
@@ -1555,55 +2173,11 @@ function _tickHitEffects(effects) {
 /** Draw all active skill effects */
 export function drawSkill(fighter, ctx) {
     for (let i = 0; i < 4; i++) {
-        if (!fighter.skills[i].active) continue;
-        if (fighter.name === 'reimu') {
-            switch (i) {
-                case 0: _drawReimuSpellCards(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawReimuSealStrike(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'marisa') {
-            switch (i) {
-                case 0: _drawMarisaLaser(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawMarisaBigLaser(fighter, ctx, fighter.skills[i].data); break;
-                case 2: _drawMarisaStarStorm(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'yuyuko') {
-            switch (i) {
-                case 0: _drawYuyukoSoulButterfly(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawYuyukoDeathInvitation(fighter, ctx, fighter.skills[i].data); break;
-                case 3: _drawYuyukoCherryBlossomStorm(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'youmu') {
-            switch (i) {
-                case 0: _drawYoumuSpiritSlash(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawYoumuGhostBlade(fighter, ctx, fighter.skills[i].data); break;
-                case 3: _drawYoumuGhostStep(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'sanae') {
-            switch (i) {
-                case 0: _drawSanaeWind(ctx, fighter.skills[i].data); break;
-                case 1: _drawSanaeMiracleStar(ctx, fighter.skills[i].data); break;
-                case 3: _drawSanaePrayer(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'flandre') {
-            switch (i) {
-                case 0: _drawFlandreLaevatein(ctx, fighter.skills[i].data); break;
-                case 1: _drawFlandreDestructionEye(ctx, fighter.skills[i].data); break;
-                case 3: _drawFlandreFourOfAKind(fighter, ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'sakuya') {
-            switch (i) {
-                case 0: _drawSakuyaKnifeArray(ctx, fighter.skills[i].data); break;
-                case 1: _drawSakuyaKillingDoll(ctx, fighter.skills[i].data); break;
-                case 3: _drawSakuyaWorld(ctx, fighter.skills[i].data); break;
-            }
-        } else if (fighter.name === 'reisen') {
-            switch (i) {
-                case 0: _drawReisenLunarBeam(fighter, ctx, fighter.skills[i].data); break;
-                case 1: _drawReisenMindWave(ctx, fighter.skills[i].data); break;
-                case 3: _drawReisenLunaticEyes(ctx, fighter.skills[i].data); break;
-            }
-        }
+        const skill = fighter.skills[i];
+        if (!skill.active) continue;
+
+        const entry = getSkillEntry(fighter.name, i);
+        if (entry && entry.draw) entry.draw(fighter, ctx, skill.data);
     }
 
     // Draw shield if active
@@ -2374,6 +2948,338 @@ function _drawReisenLunaticEyes(ctx, data) {
         ctx.closePath();
         ctx.fill();
     }
+    ctx.restore();
+}
+
+function _drawCirnoIcicleScatter(ctx, data) {
+    for (const shard of data.shards || []) {
+        if (!shard.active) continue;
+        ctx.save();
+        ctx.translate(shard.x, shard.y);
+        ctx.rotate(Math.atan2(shard.vy, shard.vx));
+        ctx.fillStyle = '#8eeaff';
+        ctx.shadowColor = '#8eeaff';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-6, -5);
+        ctx.lineTo(-2, 0);
+        ctx.lineTo(-6, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    _drawSparkEffects(ctx, data.hitEffects, '#bfefff');
+}
+
+function _drawCirnoPerfectFreeze(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    const pulse = 0.85 + Math.sin(data.timer * 14) * 0.15;
+
+    ctx.save();
+    ctx.globalAlpha = p < 0.18 ? p / 0.18 : 1 - Math.max(0, p - 0.72) / 0.28;
+    ctx.strokeStyle = '#bfefff';
+    ctx.fillStyle = 'rgba(142, 234, 255, 0.14)';
+    ctx.shadowColor = '#8eeaff';
+    ctx.shadowBlur = 22;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.radius * (0.65 + p * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    for (const crystal of data.crystals || []) {
+        const angle = crystal.angle + data.timer * 1.7;
+        const r = crystal.radius + Math.sin(data.timer * 4 + crystal.angle) * 4;
+        const x = data.x + Math.cos(angle) * r;
+        const y = data.y + Math.sin(angle) * r * 0.7;
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#8eeaff';
+        ctx.shadowBlur = 12;
+        ctx.globalAlpha = pulse;
+        ctx.beginPath();
+        ctx.moveTo(x, y - crystal.size);
+        ctx.lineTo(x + crystal.size * 0.55, y);
+        ctx.lineTo(x, y + crystal.size);
+        ctx.lineTo(x - crystal.size * 0.55, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function _drawCirnoFrostDash(fighter, ctx, data) {
+    for (const particle of data.trailParticles || []) {
+        ctx.save();
+        ctx.globalAlpha = particle.alpha;
+        ctx.fillStyle = '#bfefff';
+        ctx.shadowColor = '#8eeaff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(particle.x, particle.y, particle.size, particle.size * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#8eeaff';
+    ctx.shadowColor = '#8eeaff';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(fighter.cx, fighter.cy - fighter.hurtboxH / 2, 26, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawYukariGapBlades(ctx, data) {
+    for (const blade of data.blades || []) {
+        if (!blade.active) continue;
+        ctx.save();
+        ctx.translate(blade.x, blade.y);
+        ctx.rotate(Math.atan2(blade.vy, blade.vx));
+        ctx.strokeStyle = '#c48cff';
+        ctx.shadowColor = '#c48cff';
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(18, 0);
+        ctx.lineTo(-8, -6);
+        ctx.lineTo(-2, 0);
+        ctx.lineTo(-8, 6);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    _drawSparkEffects(ctx, data.hitEffects, '#c48cff');
+}
+
+function _drawYukariBoundaryCollapse(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = p < 0.2 ? p / 0.2 : 1 - Math.max(0, p - 0.75) / 0.25;
+    ctx.strokeStyle = '#b36bff';
+    ctx.fillStyle = 'rgba(179, 107, 255, 0.12)';
+    ctx.shadowColor = '#b36bff';
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 3 + p * 4;
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.radius * (0.7 + p * 0.3), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fill();
+    ctx.restore();
+
+    for (const eye of data.eyes || []) {
+        const angle = eye.angle + data.timer * 1.2;
+        const x = data.x + Math.cos(angle) * eye.offset;
+        const y = data.y + Math.sin(angle) * eye.offset * 0.6;
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#f5d0ff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function _drawYukariGapStep(fighter, ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    const x = data.x || fighter.cx;
+    const y = data.y || (fighter.cy - fighter.hurtboxH / 2);
+
+    ctx.save();
+    ctx.globalAlpha = 0.8 - p * 0.35;
+    ctx.strokeStyle = '#ffd166';
+    ctx.shadowColor = '#b36bff';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3;
+    for (const ring of data.rings || []) {
+        ctx.beginPath();
+        ctx.arc(x, y, ring.radius + Math.sin(data.timer * 8 + ring.phase) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(195, 140, 255, 0.18)';
+    ctx.arc(x, y, 28 + p * 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function _drawSuwakoFrogStone(ctx, data) {
+    const stone = data.stone;
+    if (!stone || !stone.active) return;
+    ctx.save();
+    ctx.translate(stone.x, stone.y);
+    ctx.rotate(stone.frame * 0.18);
+    ctx.fillStyle = '#7ed957';
+    ctx.shadowColor = '#7ed957';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(4, -12);
+    ctx.lineTo(-12, -8);
+    ctx.lineTo(-16, 4);
+    ctx.lineTo(-4, 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    _drawSparkEffects(ctx, data.hitEffects, '#7ed957');
+}
+
+function _drawSuwakoMishagujiPillar(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = p < 0.2 ? p / 0.2 : 1 - Math.max(0, p - 0.8) / 0.2;
+    ctx.strokeStyle = '#7ed957';
+    ctx.fillStyle = 'rgba(126, 217, 87, 0.18)';
+    ctx.shadowColor = '#7ed957';
+    ctx.shadowBlur = 24;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(data.x - 30, data.y + 70);
+    ctx.lineTo(data.x, data.y - 120);
+    ctx.lineTo(data.x + 30, data.y + 70);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+}
+
+function _drawSuwakoWaterDomain(ctx, data) {
+    ctx.save();
+    ctx.globalAlpha = 0.14 + Math.sin(data.timer * 5) * 0.03;
+    ctx.fillStyle = '#7fd7ff';
+    ctx.strokeStyle = '#7fd7ff';
+    ctx.shadowColor = '#7fd7ff';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    for (const ripple of data.ripples || []) {
+        ctx.save();
+        ctx.globalAlpha = 0.35 + Math.sin(data.timer * 6 + ripple.phase) * 0.1;
+        ctx.strokeStyle = '#ffffff';
+        ctx.shadowColor = '#7fd7ff';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(data.cx, data.cy, ripple.radius + Math.sin(data.timer * 4 + ripple.phase) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+function _drawKaguyaJewelShot(ctx, data) {
+    for (const jewel of data.jewels || []) {
+        if (!jewel.active) continue;
+        ctx.save();
+        ctx.translate(jewel.x, jewel.y);
+        ctx.rotate(jewel.frame * 0.12);
+        ctx.fillStyle = jewel.color || '#ffd166';
+        ctx.shadowColor = jewel.color || '#ffd166';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.moveTo(12, 0);
+        ctx.lineTo(0, -10);
+        ctx.lineTo(-12, 0);
+        ctx.lineTo(0, 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    _drawSparkEffects(ctx, data.hitEffects, '#ffd166');
+}
+
+function _drawKaguyaFiveJewels(ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = p < 0.16 ? p / 0.16 : 1 - Math.max(0, p - 0.72) / 0.28;
+    ctx.strokeStyle = '#ffd166';
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.12)';
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 22;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    for (const jewel of data.jewels || []) {
+        const angle = jewel.angle + data.timer * 2.4;
+        const x = data.x + Math.cos(angle) * (data.radius * 0.72);
+        const y = data.y + Math.sin(angle) * (data.radius * 0.5);
+        ctx.save();
+        ctx.fillStyle = jewel.color || '#ffd166';
+        ctx.shadowColor = jewel.color || '#ffd166';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 11);
+        ctx.lineTo(x + 8, y);
+        ctx.lineTo(x, y + 11);
+        ctx.lineTo(x - 8, y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function _drawKaguyaImpossibleRequest(fighter, ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    ctx.save();
+    ctx.globalAlpha = 0.18 + Math.sin(data.timer * 6) * 0.05;
+    ctx.fillStyle = '#9d7cff';
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowColor = '#9d7cff';
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    for (const jewel of data.jewels || []) {
+        ctx.save();
+        const angle = jewel.angle + data.timer * 1.5;
+        const x = data.cx + Math.cos(angle) * jewel.radius;
+        const y = data.cy + Math.sin(angle) * jewel.radius * 0.72;
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillStyle = jewel.color || '#ffffff';
+        ctx.shadowColor = jewel.color || '#ffffff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(9, 0);
+        ctx.lineTo(0, -8);
+        ctx.lineTo(-9, 0);
+        ctx.lineTo(0, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.65 - p * 0.2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowColor = '#9d7cff';
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(fighter.cx, fighter.cy - fighter.hurtboxH / 2, 24 + p * 18, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
 }
 

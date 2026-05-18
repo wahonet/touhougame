@@ -6,9 +6,17 @@ export const CHARACTER_IDS = [
     'sanae',
     'flandre',
     'sakuya',
-    'reisen'
+    'reisen',
+    'cirno',
+    'yukari',
+    'suwako',
+    'kaguya'
 ];
 export const PORTRAIT_EXPRESSIONS = ['normal', 'happy', 'angry', 'sad'];
+export const ACTION_FRAME_LIMITS = {
+    walk: 8,
+    attack: 4
+};
 
 export const SFX_FILES = [
     'sfx_hit',

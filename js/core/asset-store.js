@@ -1,24 +1,12 @@
+import { CHARACTER_IDS } from '../data/asset-manifest.js';
+
+function createCharacterMap(factory) {
+    return Object.fromEntries(CHARACTER_IDS.map(id => [id, factory(id)]));
+}
+
 export const Assets = {
-    portraits: {
-        reimu: {},
-        marisa: {},
-        yuyuko: {},
-        youmu: {},
-        sanae: {},
-        flandre: {},
-        sakuya: {},
-        reisen: {}
-    },
-    sprites: {
-        reimu: { left: {}, right: {} },
-        marisa: { left: {}, right: {} },
-        yuyuko: { left: {}, right: {} },
-        youmu: { left: {}, right: {} },
-        sanae: { left: {}, right: {} },
-        flandre: { left: {}, right: {} },
-        sakuya: { left: {}, right: {} },
-        reisen: { left: {}, right: {} }
-    },
+    portraits: createCharacterMap(() => ({})),
+    sprites: createCharacterMap(() => ({ left: {}, right: {} })),
     effects: {
         spellcard: [],
         spellcardHit: null,
@@ -41,24 +29,6 @@ export const Assets = {
     platformSmall: null,
     pickupCd: null,
     pickupHp: null,
-    defeated: {
-        reimu: null,
-        marisa: null,
-        yuyuko: null,
-        youmu: null,
-        sanae: null,
-        flandre: null,
-        sakuya: null,
-        reisen: null
-    },
-    skillIcons: {
-        reimu: [],
-        marisa: [],
-        yuyuko: [],
-        youmu: [],
-        sanae: [],
-        flandre: [],
-        sakuya: [],
-        reisen: []
-    }
+    defeated: createCharacterMap(() => null),
+    skillIcons: createCharacterMap(() => [])
 };

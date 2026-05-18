@@ -170,7 +170,7 @@ js/scenes/
 1. 在 `data/characters.js` 新增角色定义，包括 `id`、显示名、颜色、四个技能槽。
 2. 在 `data/asset-manifest.js` 的 `CHARACTER_IDS` 加入角色 id。
 3. 按现有命名放入立绘：`character/{id}_normal.png`、`happy`、`angry`、`sad`。
-4. 按现有命名放入动作：`action/{id}_stand.png`、`walk1-4`、`attack1-4`。
+4. 按现有命名放入动作：`action/{id}_stand.png`、`walk1-8`、`attack1-4`。
 5. 如果需要特殊动作图，在 `core/asset-loader.js` 增加加载规则，并在实体渲染中使用。
 6. 在选角场景中增加角色选项。目前选角 UI 只有两个角色，扩展到多角色前应先重构选择布局。
 

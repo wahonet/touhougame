@@ -621,11 +621,20 @@ function _activateReisenLunaticEyes(fighter, skill, opponent) {
     skill.data = {
         cx: target ? target.x + target.w / 2 : fighter.cx + dir * 180,
         cy: target ? target.y + target.h / 2 : fighter.cy - fighter.hurtboxH / 2,
-        radius: 230,
+        radius: 245,
         timer: 0,
-        duration: 3.2,
-        affected: []
+        duration: 1.35,
+        affected: [],
+        sparks: []
     };
+    for (let i = 0; i < 18; i++) {
+        skill.data.sparks.push({
+            angle: Math.random() * Math.PI * 2,
+            radius: 35 + Math.random() * 170,
+            speed: 1.2 + Math.random() * 2.8,
+            size: 3 + Math.random() * 5
+        });
+    }
 }
 
 // ===================== BEAM RECT HELPERS =====================
@@ -1515,11 +1524,18 @@ function _updateReisenLunaticEyes(fighter, skill, dt, opponent) {
         const dx = x - data.cx;
         const dy = y - data.cy;
         if (dx * dx + dy * dy <= data.radius * data.radius) {
-            opponent.confuseTimer = Math.max(opponent.confuseTimer || 0, 2.6);
-            opponent.slowTimer = Math.max(opponent.slowTimer || 0, 2.6);
-            opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.5);
-            if (!data.affected.includes(opponent)) data.affected.push(opponent);
+            if (!data.affected.includes(opponent)) {
+                data.affected.push(opponent);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 3);
+                opponent.slowTimer = Math.max(opponent.slowTimer || 0, 0.8);
+                opponent.slowMultiplier = Math.min(opponent.slowMultiplier || 1, 0.35);
+                emitHitImpact({ x, y, color: '#ff5fa8', shake: 8, maxShake: 12 });
+            }
         }
+    }
+    for (const spark of data.sparks) {
+        spark.angle += spark.speed * dt;
+        spark.radius += 18 * dt;
     }
     if (data.timer >= data.duration) {
         skill.active = false;
@@ -2315,20 +2331,48 @@ function _drawReisenMindWave(ctx, data) {
 }
 
 function _drawReisenLunaticEyes(ctx, data) {
-    const p = data.timer / data.duration;
+    const p = Math.min(1, data.timer / data.duration);
+    const pulse = Math.sin(data.timer * 26) * 0.5 + 0.5;
     ctx.save();
-    ctx.globalAlpha = 0.72 - p * 0.22;
+    ctx.globalAlpha = p < 0.16 ? p / 0.16 : 1 - Math.max(0, p - 0.72) / 0.28;
     ctx.strokeStyle = '#ff5fa8';
     ctx.shadowColor = '#ff445f';
-    ctx.shadowBlur = 24;
-    ctx.lineWidth = 3;
+    ctx.shadowBlur = 30;
+    ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
+    ctx.arc(data.cx, data.cy, data.radius * (0.55 + p * 0.45), 0, Math.PI * 2);
     ctx.stroke();
-    for (let i = 0; i < 6; i++) {
+
+    for (let i = 0; i < 4; i++) {
+        const r = data.radius * (0.24 + i * 0.16 + pulse * 0.03);
         ctx.beginPath();
-        ctx.ellipse(data.cx, data.cy, data.radius * (0.28 + i * 0.11), data.radius * 0.17, i * Math.PI / 6 + data.timer, 0, Math.PI * 2);
+        ctx.ellipse(data.cx, data.cy, r, data.radius * 0.13, i * Math.PI / 4 + data.timer * 2.4, 0, Math.PI * 2);
         ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255, 95, 168, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(data.cx, data.cy, 64 + pulse * 10, 34 + pulse * 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(data.cx, data.cy, 16 + pulse * 4, 25 + pulse * 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffe85a';
+    ctx.fillStyle = '#ffe85a';
+    ctx.shadowColor = '#ffe85a';
+    for (const spark of data.sparks || []) {
+        const sx = data.cx + Math.cos(spark.angle) * spark.radius;
+        const sy = data.cy + Math.sin(spark.angle) * spark.radius * 0.62;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+            const r = i % 2 === 0 ? spark.size : spark.size * 0.42;
+            ctx.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fill();
     }
     ctx.restore();
 }

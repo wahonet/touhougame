@@ -156,7 +156,7 @@ export const CHARACTER_DEFINITIONS = {
             { name: '月兔光束', type: 'damage', maxCooldown: 14, description: '蓄力发射细光束，会轻微追踪敌人高度。' },
             { name: '幻视波纹', type: 'damage', maxCooldown: 24, description: '穿透波长弹造成伤害，并让目标短暂混乱。' },
             { name: '波长偏转', type: 'shield', maxCooldown: 20, description: '偏转弹幕并减伤，近身攻击只部分抵消。' },
-            { name: '狂气之眼', type: 'utility', maxCooldown: 30, description: '大范围狂气波，使目标反向移动并降低速度。' }
+            { name: '狂气之眼', type: 'utility', maxCooldown: 30, description: '大范围狂气波，命中后强制眩晕目标3秒。' }
         ]
     }
 };

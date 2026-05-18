@@ -720,9 +720,13 @@ export const PvEScene = {
             const dx = ecx - data.cx;
             const dy = ecy - data.cy;
             if (dx * dx + dy * dy <= data.radius * data.radius) {
-                enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.45);
-                enemy.slowTimer = Math.max(enemy.slowTimer || 0, 2.6);
-                enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.5);
+                if (!data._pveStunnedEnemies) data._pveStunnedEnemies = new Set();
+                if (!data._pveStunnedEnemies.has(enemy)) {
+                    data._pveStunnedEnemies.add(enemy);
+                    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 3);
+                    enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.8);
+                    enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.35);
+                }
             }
         }
     },

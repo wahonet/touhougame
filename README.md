@@ -8,7 +8,7 @@
 npm run serve
 ```
 
-打开 `http://localhost:8000`。
+打开 `http://localhost:18081`。
 
 提交代码或重构前，先跑一遍：
 

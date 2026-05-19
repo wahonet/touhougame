@@ -6,6 +6,6 @@
   "scripts": {
     "check": "node scripts/check-project.mjs",
     "export:refactor-assets": "node scripts/export-refactor-assets.mjs",
-    "serve": "python -m http.server 8000"
+    "serve": "python -m http.server 18081"
   }
 }

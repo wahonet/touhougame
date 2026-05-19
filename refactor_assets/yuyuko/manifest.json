@@ -1,0 +1,214 @@
+{
+  "id": "yuyuko",
+  "definition": {
+    "id": "yuyuko",
+    "displayName": "幽幽子",
+    "englishName": "Yuyuko",
+    "selectName": "幽幽子 (Yuyuko)",
+    "uiName": "幽幽子 Yuyuko",
+    "resultName": "幽幽子 (Yuyuko)",
+    "accentColor": "#ff88cc",
+    "selectAccentColor": "#ff66bb",
+    "maxHp": 1500,
+    "attackDamage": 9,
+    "attackRange": 105,
+    "skillColors": [
+      "#ff66aa",
+      "#cc88ff",
+      "#ffaadd",
+      "#88ccff"
+    ],
+    "skills": [
+      {
+        "name": "反魂蝶",
+        "type": "damage",
+        "maxCooldown": 15,
+        "description": "八枚蝶弹扇形展开，命中造成稳定伤害。"
+      },
+      {
+        "name": "幽雅灵弹",
+        "type": "damage",
+        "maxCooldown": 25,
+        "description": "高速追踪幽魂弹，命中后造成高额伤害。"
+      },
+      {
+        "name": "死出之导",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "展开坚固的幽灵护盾，吸收大量伤害。"
+      },
+      {
+        "name": "西行妖梦境",
+        "type": "utility",
+        "maxCooldown": 30,
+        "description": "在敌人位置展开樱花梦境，束缚并大幅减速。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/yuyuko/normal.png",
+        "target": "refactor_assets/yuyuko/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/yuyuko/happy.png",
+        "target": "refactor_assets/yuyuko/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/yuyuko/angry.png",
+        "target": "refactor_assets/yuyuko/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/yuyuko/sad.png",
+        "target": "refactor_assets/yuyuko/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/yuyuko/stand.png",
+        "target": "refactor_assets/yuyuko/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/yuyuko/walk1.png",
+        "target": "refactor_assets/yuyuko/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/yuyuko/walk2.png",
+        "target": "refactor_assets/yuyuko/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/yuyuko/walk3.png",
+        "target": "refactor_assets/yuyuko/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/yuyuko/walk4.png",
+        "target": "refactor_assets/yuyuko/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/yuyuko/walk5.png",
+        "target": "refactor_assets/yuyuko/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/yuyuko/walk6.png",
+        "target": "refactor_assets/yuyuko/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/yuyuko/walk7.png",
+        "target": "refactor_assets/yuyuko/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/yuyuko/walk8.png",
+        "target": "refactor_assets/yuyuko/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/yuyuko/attack1.png",
+        "target": "refactor_assets/yuyuko/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/yuyuko/attack2.png",
+        "target": "refactor_assets/yuyuko/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/yuyuko/attack3.png",
+        "target": "refactor_assets/yuyuko/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/yuyuko/attack4.png",
+        "target": "refactor_assets/yuyuko/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/yuyuko/1.png",
+        "target": "refactor_assets/yuyuko/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/yuyuko/2.png",
+        "target": "refactor_assets/yuyuko/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/yuyuko/3.png",
+        "target": "refactor_assets/yuyuko/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/yuyuko/4.png",
+        "target": "refactor_assets/yuyuko/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "spellcard_1.png",
+        "source": "assets/effects/spellcard_1.png",
+        "target": "refactor_assets/yuyuko/effects/spellcard_1.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_2.png",
+        "source": "assets/effects/spellcard_2.png",
+        "target": "refactor_assets/yuyuko/effects/spellcard_2.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_3.png",
+        "source": "assets/effects/spellcard_3.png",
+        "target": "refactor_assets/yuyuko/effects/spellcard_3.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_4.png",
+        "source": "assets/effects/spellcard_4.png",
+        "target": "refactor_assets/yuyuko/effects/spellcard_4.png",
+        "exists": true
+      },
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/yuyuko/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

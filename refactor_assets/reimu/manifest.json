@@ -1,0 +1,214 @@
+{
+  "id": "reimu",
+  "definition": {
+    "id": "reimu",
+    "displayName": "灵梦",
+    "englishName": "Reimu",
+    "selectName": "灵梦 (Reimu)",
+    "uiName": "灵梦 Reimu",
+    "resultName": "灵梦 (Reimu)",
+    "accentColor": "#ff6b8a",
+    "selectAccentColor": "#ff4466",
+    "maxHp": 1000,
+    "attackDamage": 10,
+    "attackRange": 100,
+    "skillColors": [
+      "#cc3333",
+      "#991133",
+      "#6644aa",
+      "#aa77dd"
+    ],
+    "skills": [
+      {
+        "name": "梦想封印",
+        "type": "damage",
+        "maxCooldown": 15,
+        "description": "发射追踪灵符，自动修正敌人高度。"
+      },
+      {
+        "name": "二重结界",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "展开结界吸收伤害，破碎或结束时释放冲击。"
+      },
+      {
+        "name": "阴阳宝玉",
+        "type": "damage",
+        "maxCooldown": 24,
+        "description": "抛出阴阳宝玉，沿地面弹跳并击退目标。"
+      },
+      {
+        "name": "八方鬼缚阵",
+        "type": "damage",
+        "maxCooldown": 28,
+        "description": "在周围展开封印阵，短时间束缚并多段伤害。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/reimu/normal.png",
+        "target": "refactor_assets/reimu/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/reimu/happy.png",
+        "target": "refactor_assets/reimu/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/reimu/angry.png",
+        "target": "refactor_assets/reimu/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/reimu/sad.png",
+        "target": "refactor_assets/reimu/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/reimu/stand.png",
+        "target": "refactor_assets/reimu/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/reimu/walk1.png",
+        "target": "refactor_assets/reimu/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/reimu/walk2.png",
+        "target": "refactor_assets/reimu/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/reimu/walk3.png",
+        "target": "refactor_assets/reimu/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/reimu/walk4.png",
+        "target": "refactor_assets/reimu/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/reimu/walk5.png",
+        "target": "refactor_assets/reimu/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/reimu/walk6.png",
+        "target": "refactor_assets/reimu/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/reimu/walk7.png",
+        "target": "refactor_assets/reimu/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/reimu/walk8.png",
+        "target": "refactor_assets/reimu/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/reimu/attack1.png",
+        "target": "refactor_assets/reimu/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/reimu/attack2.png",
+        "target": "refactor_assets/reimu/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/reimu/attack3.png",
+        "target": "refactor_assets/reimu/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/reimu/attack4.png",
+        "target": "refactor_assets/reimu/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/reimu/1.png",
+        "target": "refactor_assets/reimu/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/reimu/2.png",
+        "target": "refactor_assets/reimu/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/reimu/3.png",
+        "target": "refactor_assets/reimu/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/reimu/4.png",
+        "target": "refactor_assets/reimu/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "spellcard_1.png",
+        "source": "assets/effects/spellcard_1.png",
+        "target": "refactor_assets/reimu/effects/spellcard_1.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_2.png",
+        "source": "assets/effects/spellcard_2.png",
+        "target": "refactor_assets/reimu/effects/spellcard_2.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_3.png",
+        "source": "assets/effects/spellcard_3.png",
+        "target": "refactor_assets/reimu/effects/spellcard_3.png",
+        "exists": true
+      },
+      {
+        "name": "spellcard_4.png",
+        "source": "assets/effects/spellcard_4.png",
+        "target": "refactor_assets/reimu/effects/spellcard_4.png",
+        "exists": true
+      },
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/reimu/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

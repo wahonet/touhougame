@@ -1,0 +1,190 @@
+{
+  "id": "kaguya",
+  "definition": {
+    "id": "kaguya",
+    "displayName": "蓬莱山辉夜",
+    "englishName": "Kaguya",
+    "selectName": "蓬莱山辉夜 (Kaguya)",
+    "uiName": "辉夜 Kaguya",
+    "resultName": "辉夜 (Kaguya)",
+    "accentColor": "#f5a4c7",
+    "selectAccentColor": "#ffd166",
+    "maxHp": 1020,
+    "attackDamage": 9,
+    "attackRange": 125,
+    "skillColors": [
+      "#ffd166",
+      "#ff8ab3",
+      "#9d7cff",
+      "#7fd7ff"
+    ],
+    "skills": [
+      {
+        "name": "蓬莱宝玉",
+        "type": "damage",
+        "maxCooldown": 14,
+        "description": "发射宝玉弹，命中后绽放星辉。"
+      },
+      {
+        "name": "龙颈之玉",
+        "type": "damage",
+        "maxCooldown": 26,
+        "description": "召出五色宝玉阵，对目标区域造成爆发。"
+      },
+      {
+        "name": "永夜屏障",
+        "type": "shield",
+        "maxCooldown": 22,
+        "description": "以永夜之光构筑屏障吸收伤害。"
+      },
+      {
+        "name": "难题宝具",
+        "type": "utility",
+        "maxCooldown": 32,
+        "description": "在目标周围展开宝具阵，减速并增强下一击。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/kaguya/normal.png",
+        "target": "refactor_assets/kaguya/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/kaguya/happy.png",
+        "target": "refactor_assets/kaguya/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/kaguya/angry.png",
+        "target": "refactor_assets/kaguya/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/kaguya/sad.png",
+        "target": "refactor_assets/kaguya/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/kaguya/stand.png",
+        "target": "refactor_assets/kaguya/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/kaguya/walk1.png",
+        "target": "refactor_assets/kaguya/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/kaguya/walk2.png",
+        "target": "refactor_assets/kaguya/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/kaguya/walk3.png",
+        "target": "refactor_assets/kaguya/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/kaguya/walk4.png",
+        "target": "refactor_assets/kaguya/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/kaguya/walk5.png",
+        "target": "refactor_assets/kaguya/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/kaguya/walk6.png",
+        "target": "refactor_assets/kaguya/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/kaguya/walk7.png",
+        "target": "refactor_assets/kaguya/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/kaguya/walk8.png",
+        "target": "refactor_assets/kaguya/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/kaguya/attack1.png",
+        "target": "refactor_assets/kaguya/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/kaguya/attack2.png",
+        "target": "refactor_assets/kaguya/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/kaguya/attack3.png",
+        "target": "refactor_assets/kaguya/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/kaguya/attack4.png",
+        "target": "refactor_assets/kaguya/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/kaguya/1.png",
+        "target": "refactor_assets/kaguya/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/kaguya/2.png",
+        "target": "refactor_assets/kaguya/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/kaguya/3.png",
+        "target": "refactor_assets/kaguya/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/kaguya/4.png",
+        "target": "refactor_assets/kaguya/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/kaguya/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

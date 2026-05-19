@@ -1,0 +1,190 @@
+{
+  "id": "suwako",
+  "definition": {
+    "id": "suwako",
+    "displayName": "泄矢诹访子",
+    "englishName": "Suwako",
+    "selectName": "泄矢诹访子 (Suwako)",
+    "uiName": "诹访子 Suwako",
+    "resultName": "诹访子 (Suwako)",
+    "accentColor": "#d8b56a",
+    "selectAccentColor": "#7ed957",
+    "maxHp": 980,
+    "attackDamage": 10,
+    "attackRange": 115,
+    "skillColors": [
+      "#77dd77",
+      "#7fd7ff",
+      "#d7b15d",
+      "#9b6cff"
+    ],
+    "skills": [
+      {
+        "name": "蛙石跃击",
+        "type": "damage",
+        "maxCooldown": 14,
+        "description": "召出跳跃蛙石向前弹跳攻击。"
+      },
+      {
+        "name": "坤之御柱",
+        "type": "damage",
+        "maxCooldown": 25,
+        "description": "在目标脚下升起水环与御符，造成范围伤害。"
+      },
+      {
+        "name": "土著神护符",
+        "type": "shield",
+        "maxCooldown": 21,
+        "description": "展开守护符阵吸收伤害。"
+      },
+      {
+        "name": "洩矢之水域",
+        "type": "utility",
+        "maxCooldown": 30,
+        "description": "制造水域减速并短暂束缚范围内敌人。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/suwako/normal.png",
+        "target": "refactor_assets/suwako/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/suwako/happy.png",
+        "target": "refactor_assets/suwako/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/suwako/angry.png",
+        "target": "refactor_assets/suwako/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/suwako/sad.png",
+        "target": "refactor_assets/suwako/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/suwako/stand.png",
+        "target": "refactor_assets/suwako/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/suwako/walk1.png",
+        "target": "refactor_assets/suwako/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/suwako/walk2.png",
+        "target": "refactor_assets/suwako/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/suwako/walk3.png",
+        "target": "refactor_assets/suwako/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/suwako/walk4.png",
+        "target": "refactor_assets/suwako/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/suwako/walk5.png",
+        "target": "refactor_assets/suwako/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/suwako/walk6.png",
+        "target": "refactor_assets/suwako/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/suwako/walk7.png",
+        "target": "refactor_assets/suwako/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/suwako/walk8.png",
+        "target": "refactor_assets/suwako/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/suwako/attack1.png",
+        "target": "refactor_assets/suwako/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/suwako/attack2.png",
+        "target": "refactor_assets/suwako/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/suwako/attack3.png",
+        "target": "refactor_assets/suwako/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/suwako/attack4.png",
+        "target": "refactor_assets/suwako/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/suwako/1.png",
+        "target": "refactor_assets/suwako/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/suwako/2.png",
+        "target": "refactor_assets/suwako/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/suwako/3.png",
+        "target": "refactor_assets/suwako/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/suwako/4.png",
+        "target": "refactor_assets/suwako/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/suwako/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "id": "yukari",
+  "definition": {
+    "id": "yukari",
+    "displayName": "八云紫",
+    "englishName": "Yukari",
+    "selectName": "八云紫 (Yukari)",
+    "uiName": "八云紫 Yukari",
+    "resultName": "八云紫 (Yukari)",
+    "accentColor": "#c48cff",
+    "selectAccentColor": "#b36bff",
+    "maxHp": 1100,
+    "attackDamage": 9,
+    "attackRange": 135,
+    "skillColors": [
+      "#b36bff",
+      "#7b3fb2",
+      "#f5d0ff",
+      "#ffd166"
+    ],
+    "skills": [
+      {
+        "name": "间隙之刃",
+        "type": "damage",
+        "maxCooldown": 15,
+        "description": "从隙间射出多道紫色刃痕。"
+      },
+      {
+        "name": "境界坍缩",
+        "type": "damage",
+        "maxCooldown": 28,
+        "description": "在目标附近展开隙间，延迟后造成高额伤害。"
+      },
+      {
+        "name": "境界护幕",
+        "type": "shield",
+        "maxCooldown": 22,
+        "description": "用境界护幕吸收伤害。"
+      },
+      {
+        "name": "神隐隙间",
+        "type": "utility",
+        "maxCooldown": 30,
+        "description": "短距离穿梭到目标侧后方，并强化下一击。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/yukari/normal.png",
+        "target": "refactor_assets/yukari/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/yukari/happy.png",
+        "target": "refactor_assets/yukari/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/yukari/angry.png",
+        "target": "refactor_assets/yukari/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/yukari/sad.png",
+        "target": "refactor_assets/yukari/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/yukari/stand.png",
+        "target": "refactor_assets/yukari/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/yukari/walk1.png",
+        "target": "refactor_assets/yukari/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/yukari/walk2.png",
+        "target": "refactor_assets/yukari/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/yukari/walk3.png",
+        "target": "refactor_assets/yukari/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/yukari/walk4.png",
+        "target": "refactor_assets/yukari/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/yukari/walk5.png",
+        "target": "refactor_assets/yukari/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/yukari/walk6.png",
+        "target": "refactor_assets/yukari/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/yukari/walk7.png",
+        "target": "refactor_assets/yukari/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/yukari/walk8.png",
+        "target": "refactor_assets/yukari/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/yukari/attack1.png",
+        "target": "refactor_assets/yukari/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/yukari/attack2.png",
+        "target": "refactor_assets/yukari/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/yukari/attack3.png",
+        "target": "refactor_assets/yukari/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/yukari/attack4.png",
+        "target": "refactor_assets/yukari/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/yukari/1.png",
+        "target": "refactor_assets/yukari/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/yukari/2.png",
+        "target": "refactor_assets/yukari/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/yukari/3.png",
+        "target": "refactor_assets/yukari/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/yukari/4.png",
+        "target": "refactor_assets/yukari/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/yukari/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

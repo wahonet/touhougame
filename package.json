@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "check": "node scripts/check-project.mjs",
+    "export:refactor-assets": "node scripts/export-refactor-assets.mjs",
     "serve": "python -m http.server 8000"
   }
 }

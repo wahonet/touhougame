@@ -1,0 +1,214 @@
+{
+  "id": "youmu",
+  "definition": {
+    "id": "youmu",
+    "displayName": "妖梦",
+    "englishName": "Youmu",
+    "selectName": "妖梦 (Youmu)",
+    "uiName": "妖梦 Youmu",
+    "resultName": "妖梦 (Youmu)",
+    "accentColor": "#88eebb",
+    "selectAccentColor": "#66ddaa",
+    "maxHp": 900,
+    "attackDamage": 12,
+    "attackRange": 105,
+    "skillColors": [
+      "#44ddaa",
+      "#88ccff",
+      "#aaffcc",
+      "#66ffdd"
+    ],
+    "skills": [
+      {
+        "name": "半灵追斩",
+        "type": "damage",
+        "maxCooldown": 12,
+        "description": "半灵化作追踪斩击，自动追向敌人。"
+      },
+      {
+        "name": "幽魂回刃",
+        "type": "damage",
+        "maxCooldown": 20,
+        "description": "放出往返幽魂剑气，去回程都可命中。"
+      },
+      {
+        "name": "半灵护网",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "半灵环绕成盾，吸收一段伤害。"
+      },
+      {
+        "name": "幽体步",
+        "type": "utility",
+        "maxCooldown": 16,
+        "description": "化为幽影快速位移，期间短暂无敌。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/youmu/normal.png",
+        "target": "refactor_assets/youmu/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/youmu/happy.png",
+        "target": "refactor_assets/youmu/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/youmu/angry.png",
+        "target": "refactor_assets/youmu/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/youmu/sad.png",
+        "target": "refactor_assets/youmu/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/youmu/stand.png",
+        "target": "refactor_assets/youmu/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/youmu/walk1.png",
+        "target": "refactor_assets/youmu/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/youmu/walk2.png",
+        "target": "refactor_assets/youmu/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/youmu/walk3.png",
+        "target": "refactor_assets/youmu/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/youmu/walk4.png",
+        "target": "refactor_assets/youmu/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/youmu/walk5.png",
+        "target": "refactor_assets/youmu/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/youmu/walk6.png",
+        "target": "refactor_assets/youmu/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/youmu/walk7.png",
+        "target": "refactor_assets/youmu/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/youmu/walk8.png",
+        "target": "refactor_assets/youmu/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/youmu/attack1.png",
+        "target": "refactor_assets/youmu/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/youmu/attack2.png",
+        "target": "refactor_assets/youmu/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/youmu/attack3.png",
+        "target": "refactor_assets/youmu/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/youmu/attack4.png",
+        "target": "refactor_assets/youmu/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/youmu/1.png",
+        "target": "refactor_assets/youmu/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/youmu/2.png",
+        "target": "refactor_assets/youmu/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/youmu/3.png",
+        "target": "refactor_assets/youmu/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/youmu/4.png",
+        "target": "refactor_assets/youmu/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "youmu_spirit_slash.png",
+        "source": "assets/effects/youmu_spirit_slash.png",
+        "target": "refactor_assets/youmu/effects/youmu_spirit_slash.png",
+        "exists": true
+      },
+      {
+        "name": "youmu_ghost_blade.png",
+        "source": "assets/effects/youmu_ghost_blade.png",
+        "target": "refactor_assets/youmu/effects/youmu_ghost_blade.png",
+        "exists": true
+      },
+      {
+        "name": "youmu_ghost_trail.png",
+        "source": "assets/effects/youmu_ghost_trail.png",
+        "target": "refactor_assets/youmu/effects/youmu_ghost_trail.png",
+        "exists": true
+      },
+      {
+        "name": "youmu_spirit_shield.png",
+        "source": "assets/effects/youmu_spirit_shield.png",
+        "target": "refactor_assets/youmu/effects/youmu_spirit_shield.png",
+        "exists": true
+      },
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/youmu/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

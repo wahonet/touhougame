@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-05-19T17:58:49.601Z",
+  "sourceLayout": {
+    "portraits": "character/<id>/",
+    "actions": "action/<id>/",
+    "icons": "assets/icons/<id>/",
+    "effects": "assets/effects/"
+  },
+  "characters": [
+    {
+      "id": "reimu",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 5
+    },
+    {
+      "id": "marisa",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 10
+    },
+    {
+      "id": "yuyuko",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 5
+    },
+    {
+      "id": "youmu",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 5
+    },
+    {
+      "id": "sanae",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "flandre",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "sakuya",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "reisen",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "cirno",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "yukari",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "suwako",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    },
+    {
+      "id": "kaguya",
+      "portraits": 4,
+      "actions": 13,
+      "icons": 4,
+      "effects": 1
+    }
+  ]
+}

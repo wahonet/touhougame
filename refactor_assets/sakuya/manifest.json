@@ -1,0 +1,190 @@
+{
+  "id": "sakuya",
+  "definition": {
+    "id": "sakuya",
+    "displayName": "咲夜",
+    "englishName": "Sakuya",
+    "selectName": "十六夜咲夜 (Sakuya)",
+    "uiName": "咲夜 Sakuya",
+    "resultName": "咲夜 (Sakuya)",
+    "accentColor": "#a9d7ff",
+    "selectAccentColor": "#7fc9ff",
+    "maxHp": 900,
+    "attackDamage": 11,
+    "attackRange": 165,
+    "skillColors": [
+      "#dcefff",
+      "#86c7ff",
+      "#9dbbff",
+      "#d8f2ff"
+    ],
+    "skills": [
+      {
+        "name": "银刃阵",
+        "type": "damage",
+        "maxCooldown": 13,
+        "description": "扇形投掷多把飞刀，中近距离压制。"
+      },
+      {
+        "name": "幻象杀人鬼",
+        "type": "damage",
+        "maxCooldown": 24,
+        "description": "瞬移到敌人侧后方，释放交叉刀阵。"
+      },
+      {
+        "name": "怀表结界",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "时间护盾抵消伤害，并减速周围敌人。"
+      },
+      {
+        "name": "咲夜的世界",
+        "type": "utility",
+        "maxCooldown": 34,
+        "description": "短暂时停敌人和怪物，咲夜可自由行动。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/sakuya/normal.png",
+        "target": "refactor_assets/sakuya/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/sakuya/happy.png",
+        "target": "refactor_assets/sakuya/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/sakuya/angry.png",
+        "target": "refactor_assets/sakuya/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/sakuya/sad.png",
+        "target": "refactor_assets/sakuya/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/sakuya/stand.png",
+        "target": "refactor_assets/sakuya/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/sakuya/walk1.png",
+        "target": "refactor_assets/sakuya/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/sakuya/walk2.png",
+        "target": "refactor_assets/sakuya/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/sakuya/walk3.png",
+        "target": "refactor_assets/sakuya/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/sakuya/walk4.png",
+        "target": "refactor_assets/sakuya/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/sakuya/walk5.png",
+        "target": "refactor_assets/sakuya/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/sakuya/walk6.png",
+        "target": "refactor_assets/sakuya/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/sakuya/walk7.png",
+        "target": "refactor_assets/sakuya/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/sakuya/walk8.png",
+        "target": "refactor_assets/sakuya/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/sakuya/attack1.png",
+        "target": "refactor_assets/sakuya/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/sakuya/attack2.png",
+        "target": "refactor_assets/sakuya/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/sakuya/attack3.png",
+        "target": "refactor_assets/sakuya/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/sakuya/attack4.png",
+        "target": "refactor_assets/sakuya/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/sakuya/1.png",
+        "target": "refactor_assets/sakuya/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/sakuya/2.png",
+        "target": "refactor_assets/sakuya/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/sakuya/3.png",
+        "target": "refactor_assets/sakuya/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/sakuya/4.png",
+        "target": "refactor_assets/sakuya/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/sakuya/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

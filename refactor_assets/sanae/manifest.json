@@ -1,0 +1,190 @@
+{
+  "id": "sanae",
+  "definition": {
+    "id": "sanae",
+    "displayName": "早苗",
+    "englishName": "Sanae",
+    "selectName": "东风谷早苗 (Sanae)",
+    "uiName": "早苗 Sanae",
+    "resultName": "早苗 (Sanae)",
+    "accentColor": "#68e0a0",
+    "selectAccentColor": "#63f3b0",
+    "maxHp": 1050,
+    "attackDamage": 9,
+    "attackRange": 120,
+    "skillColors": [
+      "#7df5bd",
+      "#ffe86b",
+      "#68b8ff",
+      "#9affd2"
+    ],
+    "skills": [
+      {
+        "name": "神风之符",
+        "type": "damage",
+        "maxCooldown": 13,
+        "description": "三道弧形风刃向前推进，命中会轻微击退。"
+      },
+      {
+        "name": "客星奇迹",
+        "type": "damage",
+        "maxCooldown": 24,
+        "description": "短暂预兆后在敌人脚下落下星光柱。"
+      },
+      {
+        "name": "守矢护佑",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "蛇与蛙的双层护罩，破盾时击退近身敌人。"
+      },
+      {
+        "name": "奇迹祈愿",
+        "type": "utility",
+        "maxCooldown": 28,
+        "description": "祈愿触发奇迹，回复、减CD或短暂强化下一击。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/sanae/normal.png",
+        "target": "refactor_assets/sanae/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/sanae/happy.png",
+        "target": "refactor_assets/sanae/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/sanae/angry.png",
+        "target": "refactor_assets/sanae/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/sanae/sad.png",
+        "target": "refactor_assets/sanae/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/sanae/stand.png",
+        "target": "refactor_assets/sanae/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/sanae/walk1.png",
+        "target": "refactor_assets/sanae/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/sanae/walk2.png",
+        "target": "refactor_assets/sanae/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/sanae/walk3.png",
+        "target": "refactor_assets/sanae/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/sanae/walk4.png",
+        "target": "refactor_assets/sanae/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/sanae/walk5.png",
+        "target": "refactor_assets/sanae/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/sanae/walk6.png",
+        "target": "refactor_assets/sanae/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/sanae/walk7.png",
+        "target": "refactor_assets/sanae/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/sanae/walk8.png",
+        "target": "refactor_assets/sanae/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/sanae/attack1.png",
+        "target": "refactor_assets/sanae/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/sanae/attack2.png",
+        "target": "refactor_assets/sanae/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/sanae/attack3.png",
+        "target": "refactor_assets/sanae/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/sanae/attack4.png",
+        "target": "refactor_assets/sanae/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/sanae/1.png",
+        "target": "refactor_assets/sanae/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/sanae/2.png",
+        "target": "refactor_assets/sanae/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/sanae/3.png",
+        "target": "refactor_assets/sanae/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/sanae/4.png",
+        "target": "refactor_assets/sanae/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/sanae/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

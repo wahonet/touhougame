@@ -1,0 +1,190 @@
+{
+  "id": "cirno",
+  "definition": {
+    "id": "cirno",
+    "displayName": "琪露诺",
+    "englishName": "Cirno",
+    "selectName": "琪露诺 (Cirno)",
+    "uiName": "琪露诺 Cirno",
+    "resultName": "琪露诺 (Cirno)",
+    "accentColor": "#76d9ff",
+    "selectAccentColor": "#44bfff",
+    "maxHp": 820,
+    "attackDamage": 10,
+    "attackRange": 105,
+    "skillColors": [
+      "#8eeaff",
+      "#4fb8ff",
+      "#d9fbff",
+      "#5d8dff"
+    ],
+    "skills": [
+      {
+        "name": "冰晶散射",
+        "type": "damage",
+        "maxCooldown": 13,
+        "description": "散射多枚冰晶，适合中距离压制。"
+      },
+      {
+        "name": "完美冻结",
+        "type": "damage",
+        "maxCooldown": 24,
+        "description": "在目标位置爆出寒霜，造成伤害并短暂冻结。"
+      },
+      {
+        "name": "冰之护盾",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "凝出冰盾吸收伤害，持续一小段时间。"
+      },
+      {
+        "name": "寒冰冲刺",
+        "type": "utility",
+        "maxCooldown": 18,
+        "description": "向前快速滑行，期间短暂无敌并留下冰雾。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/cirno/normal.png",
+        "target": "refactor_assets/cirno/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/cirno/happy.png",
+        "target": "refactor_assets/cirno/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/cirno/angry.png",
+        "target": "refactor_assets/cirno/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/cirno/sad.png",
+        "target": "refactor_assets/cirno/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/cirno/stand.png",
+        "target": "refactor_assets/cirno/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/cirno/walk1.png",
+        "target": "refactor_assets/cirno/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/cirno/walk2.png",
+        "target": "refactor_assets/cirno/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/cirno/walk3.png",
+        "target": "refactor_assets/cirno/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/cirno/walk4.png",
+        "target": "refactor_assets/cirno/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/cirno/walk5.png",
+        "target": "refactor_assets/cirno/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/cirno/walk6.png",
+        "target": "refactor_assets/cirno/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/cirno/walk7.png",
+        "target": "refactor_assets/cirno/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/cirno/walk8.png",
+        "target": "refactor_assets/cirno/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/cirno/attack1.png",
+        "target": "refactor_assets/cirno/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/cirno/attack2.png",
+        "target": "refactor_assets/cirno/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/cirno/attack3.png",
+        "target": "refactor_assets/cirno/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/cirno/attack4.png",
+        "target": "refactor_assets/cirno/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/cirno/1.png",
+        "target": "refactor_assets/cirno/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/cirno/2.png",
+        "target": "refactor_assets/cirno/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/cirno/3.png",
+        "target": "refactor_assets/cirno/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/cirno/4.png",
+        "target": "refactor_assets/cirno/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/cirno/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

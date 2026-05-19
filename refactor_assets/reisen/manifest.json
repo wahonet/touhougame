@@ -1,0 +1,190 @@
+{
+  "id": "reisen",
+  "definition": {
+    "id": "reisen",
+    "displayName": "铃仙",
+    "englishName": "Reisen",
+    "selectName": "铃仙·优昙华院 (Reisen)",
+    "uiName": "铃仙 Reisen",
+    "resultName": "铃仙 (Reisen)",
+    "accentColor": "#bc8cff",
+    "selectAccentColor": "#ff5fa8",
+    "maxHp": 950,
+    "attackDamage": 8,
+    "attackRange": 250,
+    "skillColors": [
+      "#ff445f",
+      "#636dff",
+      "#bc8cff",
+      "#ff5fa8"
+    ],
+    "skills": [
+      {
+        "name": "月兔光束",
+        "type": "damage",
+        "maxCooldown": 14,
+        "description": "蓄力发射细光束，会轻微追踪敌人高度。"
+      },
+      {
+        "name": "幻视波纹",
+        "type": "damage",
+        "maxCooldown": 24,
+        "description": "穿透波长弹造成伤害，并让目标短暂混乱。"
+      },
+      {
+        "name": "波长偏转",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "偏转弹幕并减伤，近身攻击只部分抵消。"
+      },
+      {
+        "name": "狂气之眼",
+        "type": "utility",
+        "maxCooldown": 30,
+        "description": "大范围狂气波，命中后强制眩晕目标3秒。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/reisen/normal.png",
+        "target": "refactor_assets/reisen/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/reisen/happy.png",
+        "target": "refactor_assets/reisen/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/reisen/angry.png",
+        "target": "refactor_assets/reisen/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/reisen/sad.png",
+        "target": "refactor_assets/reisen/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/reisen/stand.png",
+        "target": "refactor_assets/reisen/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/reisen/walk1.png",
+        "target": "refactor_assets/reisen/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/reisen/walk2.png",
+        "target": "refactor_assets/reisen/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/reisen/walk3.png",
+        "target": "refactor_assets/reisen/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/reisen/walk4.png",
+        "target": "refactor_assets/reisen/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/reisen/walk5.png",
+        "target": "refactor_assets/reisen/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/reisen/walk6.png",
+        "target": "refactor_assets/reisen/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/reisen/walk7.png",
+        "target": "refactor_assets/reisen/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/reisen/walk8.png",
+        "target": "refactor_assets/reisen/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/reisen/attack1.png",
+        "target": "refactor_assets/reisen/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/reisen/attack2.png",
+        "target": "refactor_assets/reisen/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/reisen/attack3.png",
+        "target": "refactor_assets/reisen/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/reisen/attack4.png",
+        "target": "refactor_assets/reisen/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/reisen/1.png",
+        "target": "refactor_assets/reisen/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/reisen/2.png",
+        "target": "refactor_assets/reisen/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/reisen/3.png",
+        "target": "refactor_assets/reisen/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/reisen/4.png",
+        "target": "refactor_assets/reisen/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/reisen/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "id": "flandre",
+  "definition": {
+    "id": "flandre",
+    "displayName": "芙兰",
+    "englishName": "Flandre",
+    "selectName": "芙兰朵露 (Flandre)",
+    "uiName": "芙兰 Flandre",
+    "resultName": "芙兰 (Flandre)",
+    "accentColor": "#ff5666",
+    "selectAccentColor": "#ff3d4f",
+    "maxHp": 800,
+    "attackDamage": 12,
+    "attackRange": 95,
+    "skillColors": [
+      "#ff4a3f",
+      "#ff9a2f",
+      "#df3350",
+      "#f06cff"
+    ],
+    "skills": [
+      {
+        "name": "禁忌莱瓦汀",
+        "type": "damage",
+        "maxCooldown": 14,
+        "description": "挥出火焰剑波，近中距离爆发很高。"
+      },
+      {
+        "name": "破坏之眼",
+        "type": "damage",
+        "maxCooldown": 26,
+        "description": "锁定敌人当前位置，延迟后产生裂纹爆破。"
+      },
+      {
+        "name": "红魔结界",
+        "type": "shield",
+        "maxCooldown": 20,
+        "description": "短时间高吸收的血红晶翼护盾。"
+      },
+      {
+        "name": "四重存在",
+        "type": "utility",
+        "maxCooldown": 30,
+        "description": "召出残影分身扰乱锁定，下一次平A附带爆裂。"
+      }
+    ]
+  },
+  "assets": {
+    "portraits": [
+      {
+        "name": "normal.png",
+        "source": "character/flandre/normal.png",
+        "target": "refactor_assets/flandre/portraits/normal.png",
+        "exists": true
+      },
+      {
+        "name": "happy.png",
+        "source": "character/flandre/happy.png",
+        "target": "refactor_assets/flandre/portraits/happy.png",
+        "exists": true
+      },
+      {
+        "name": "angry.png",
+        "source": "character/flandre/angry.png",
+        "target": "refactor_assets/flandre/portraits/angry.png",
+        "exists": true
+      },
+      {
+        "name": "sad.png",
+        "source": "character/flandre/sad.png",
+        "target": "refactor_assets/flandre/portraits/sad.png",
+        "exists": true
+      }
+    ],
+    "actions": [
+      {
+        "name": "stand.png",
+        "source": "action/flandre/stand.png",
+        "target": "refactor_assets/flandre/actions/stand.png",
+        "exists": true
+      },
+      {
+        "name": "walk1.png",
+        "source": "action/flandre/walk1.png",
+        "target": "refactor_assets/flandre/actions/walk1.png",
+        "exists": true
+      },
+      {
+        "name": "walk2.png",
+        "source": "action/flandre/walk2.png",
+        "target": "refactor_assets/flandre/actions/walk2.png",
+        "exists": true
+      },
+      {
+        "name": "walk3.png",
+        "source": "action/flandre/walk3.png",
+        "target": "refactor_assets/flandre/actions/walk3.png",
+        "exists": true
+      },
+      {
+        "name": "walk4.png",
+        "source": "action/flandre/walk4.png",
+        "target": "refactor_assets/flandre/actions/walk4.png",
+        "exists": true
+      },
+      {
+        "name": "walk5.png",
+        "source": "action/flandre/walk5.png",
+        "target": "refactor_assets/flandre/actions/walk5.png",
+        "exists": true
+      },
+      {
+        "name": "walk6.png",
+        "source": "action/flandre/walk6.png",
+        "target": "refactor_assets/flandre/actions/walk6.png",
+        "exists": true
+      },
+      {
+        "name": "walk7.png",
+        "source": "action/flandre/walk7.png",
+        "target": "refactor_assets/flandre/actions/walk7.png",
+        "exists": true
+      },
+      {
+        "name": "walk8.png",
+        "source": "action/flandre/walk8.png",
+        "target": "refactor_assets/flandre/actions/walk8.png",
+        "exists": true
+      },
+      {
+        "name": "attack1.png",
+        "source": "action/flandre/attack1.png",
+        "target": "refactor_assets/flandre/actions/attack1.png",
+        "exists": true
+      },
+      {
+        "name": "attack2.png",
+        "source": "action/flandre/attack2.png",
+        "target": "refactor_assets/flandre/actions/attack2.png",
+        "exists": true
+      },
+      {
+        "name": "attack3.png",
+        "source": "action/flandre/attack3.png",
+        "target": "refactor_assets/flandre/actions/attack3.png",
+        "exists": true
+      },
+      {
+        "name": "attack4.png",
+        "source": "action/flandre/attack4.png",
+        "target": "refactor_assets/flandre/actions/attack4.png",
+        "exists": true
+      }
+    ],
+    "icons": [
+      {
+        "name": "1.png",
+        "source": "assets/icons/flandre/1.png",
+        "target": "refactor_assets/flandre/icons/1.png",
+        "exists": true
+      },
+      {
+        "name": "2.png",
+        "source": "assets/icons/flandre/2.png",
+        "target": "refactor_assets/flandre/icons/2.png",
+        "exists": true
+      },
+      {
+        "name": "3.png",
+        "source": "assets/icons/flandre/3.png",
+        "target": "refactor_assets/flandre/icons/3.png",
+        "exists": true
+      },
+      {
+        "name": "4.png",
+        "source": "assets/icons/flandre/4.png",
+        "target": "refactor_assets/flandre/icons/4.png",
+        "exists": true
+      }
+    ],
+    "effects": [
+      {
+        "name": "shield.png",
+        "source": "assets/effects/shield.png",
+        "target": "refactor_assets/flandre/effects/shield.png",
+        "exists": true
+      }
+    ]
+  }
+}

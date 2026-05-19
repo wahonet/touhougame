@@ -57,8 +57,14 @@ vb_touhou/
 │   └── render/
 │       └── loading-screen.js        # Loading 场景绘制
 ├── assets/
+│   ├── effects/
+│   ├── icons/{id}/
+│   ├── pickups/
+│   └── stage/
 ├── action/
+│   └── {id}/
 ├── character/
+│   └── {id}/
 └── audio/
 ```
 
@@ -169,10 +175,11 @@ js/scenes/
 
 1. 在 `data/characters.js` 新增角色定义，包括 `id`、显示名、颜色、四个技能槽。
 2. 在 `data/asset-manifest.js` 的 `CHARACTER_IDS` 加入角色 id。
-3. 按现有命名放入立绘：`character/{id}_normal.png`、`happy`、`angry`、`sad`。
-4. 按现有命名放入动作：`action/{id}_stand.png`、`walk1-8`、`attack1-4`。
-5. 如果需要特殊动作图，在 `core/asset-loader.js` 增加加载规则，并在实体渲染中使用。
-6. 在选角场景中增加角色选项。目前选角 UI 只有两个角色，扩展到多角色前应先重构选择布局。
+3. 按现有命名放入立绘：`character/{id}/normal.png`、`happy.png`、`angry.png`、`sad.png`。
+4. 按现有命名放入动作：`action/{id}/stand.png`、`walk1-8`、`attack1-4`。
+5. 按现有命名放入技能图标：`assets/icons/{id}/1.png`、`2.png`、`3.png`、`4.png`。
+6. 如果需要特殊动作图，在 `core/asset-loader.js` 增加加载规则，并在实体渲染中使用。
+7. 在选角场景中增加角色选项。目前选角 UI 已支持 12 人网格，继续扩展前应确认键盘直选映射。
 
 ## 添加新技能
 
@@ -180,7 +187,7 @@ js/scenes/
 
 1. 先在 `data/characters.js` 修改技能名与冷却。
 2. 资源路径放在 `data/asset-manifest.js` 或 `core/asset-loader.js`。
-3. 技能激活、更新、绘制现在位于 `entities/fighter.js`。新增技能时按角色和技能序号集中放置。
+3. 技能激活、更新、绘制现在位于 `entities/fighter-skills.js`。新增技能时按角色和技能序号集中放置。
 4. 普通命中、碰撞、状态效果若能复用，应放到 `systems/`，不要复制在多个技能函数里。
 5. 技能产生震屏、粒子等表现反馈时，使用 `emitHitImpact()` 或扩展 `battle-events.js`，不要 import `BattleScene`。
 
@@ -193,10 +200,11 @@ js/scenes/
 
 ## 添加资源
 
-- 图片：更新 `data/asset-manifest.js` 或 `core/asset-loader.js`，加载结果写入 `Assets`。
+- 图片：更新 `data/asset-manifest.js` 或 `core/asset-loader.js`，加载结果写入 `Assets`。运行时图片按用途放入 `character/`、`action/`、`assets/icons/`、`assets/effects/`、`assets/stage/`、`assets/pickups/`。
 - 音效：把文件放到 `audio/`，并在 `SFX_FILES` 中加入不带扩展名的 key。
 - BGM：通过 `AudioManager.playBGM('bgm_name')` 播放，对应 `audio/bgm_name.wav`。
 - 不要在绘制函数里临时 `new Image()` 或 `fetch()`，资源应在 Loading 阶段加载。
+- `preview/` 和 `tmp/` 只作为本地生成/审阅输出目录，不作为运行时资源目录提交。
 
 ## 编码规范
 

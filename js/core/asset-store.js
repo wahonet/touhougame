@@ -19,7 +19,6 @@ export const Assets = {
         sealHit: null,
         bigLaserBeam: null,
         bigLaserHead: null,
-        flyAura: null,
         youmuSpiritSlash: null,
         youmuGhostBlade: null,
         youmuGhostTrail: null,
@@ -29,6 +28,5 @@ export const Assets = {
     platformSmall: null,
     pickupCd: null,
     pickupHp: null,
-    defeated: createCharacterMap(() => null),
     skillIcons: createCharacterMap(() => [])
 };

@@ -54,10 +54,10 @@ export class Fighter {
         // 4-skill system with independent cooldowns
         this.skills = createSkillSlots(name);
 
-        // Shield state (used by skill 2 for reimu, skill 3 for marisa barrier)
+        // Shield state (used by shield-type skills)
         this.shield = null; // { hp, maxHp, duration, timer, flashTimer }
 
-        // Flying state (reimu skill 4)
+        // Flying / mobility state (legacy flight pose / reserved for future movement skills)
         this.flying = { active: false, timer: 0, duration: 5 };
 
         // Normal attack damage

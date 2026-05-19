@@ -37,15 +37,15 @@ export const SFX_FILES = [
 
 export const EFFECT_FRAME_SETS = {
     spellcard: {
-        pattern: index => `assets/spellcard_${index}.png`,
+        pattern: index => `assets/effects/spellcard_${index}.png`,
         count: 4
     },
     star: {
-        pattern: index => `assets/star_${index}.png`,
+        pattern: index => `assets/effects/star_${index}.png`,
         count: 4
     },
     seal: {
-        pattern: index => `assets/seal_${index}.png`,
+        pattern: index => `assets/effects/seal_${index}.png`,
         count: 4
     }
 };

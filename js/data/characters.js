@@ -13,10 +13,10 @@ export const CHARACTER_DEFINITIONS = {
         attackRange: 100,
         skillColors: ['#cc3333', '#991133', '#6644aa', '#aa77dd'],
         skills: [
-            { name: '梦想天生', type: 'damage', maxCooldown: 15, description: '散射八枚灵符，适合中距离压制。' },
-            { name: '梦想封印', type: 'damage', maxCooldown: 30, description: '追踪封印弹，命中造成高额伤害。' },
-            { name: '二重结界', type: 'shield', maxCooldown: 20, description: '展开结界，吸收一段时间内的伤害。' },
-            { name: '飞行', type: 'utility', maxCooldown: 25, description: '短时间自由升降，用于追击或脱离。' }
+            { name: '梦想封印', type: 'damage', maxCooldown: 15, description: '发射追踪灵符，自动修正敌人高度。' },
+            { name: '二重结界', type: 'shield', maxCooldown: 20, description: '展开结界吸收伤害，破碎或结束时释放冲击。' },
+            { name: '阴阳宝玉', type: 'damage', maxCooldown: 24, description: '抛出阴阳宝玉，沿地面弹跳并击退目标。' },
+            { name: '八方鬼缚阵', type: 'damage', maxCooldown: 28, description: '在周围展开封印阵，短时间束缚并多段伤害。' }
         ]
     },
     marisa: {

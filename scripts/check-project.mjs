@@ -106,23 +106,22 @@ function checkLevelData() {
 
 function checkAssets() {
     const requiredSingleEffects = [
-        'assets/spellcard_hit.png',
-        'assets/seal_hit.png',
-        'assets/laser_beam.png',
-        'assets/laser_head.png',
-        'assets/laser_charge.png',
-        'assets/shield.png',
-        'assets/big_laser_beam.png',
-        'assets/big_laser_head.png',
-        'assets/fly_aura.png',
-        'assets/youmu_spirit_slash.png',
-        'assets/youmu_ghost_blade.png',
-        'assets/youmu_ghost_trail.png',
-        'assets/youmu_spirit_shield.png',
-        'assets/platform.png',
-        'assets/platform_small.png',
-        'assets/pickup_cd.png',
-        'assets/pickup_hp.png'
+        'assets/effects/spellcard_hit.png',
+        'assets/effects/seal_hit.png',
+        'assets/effects/laser_beam.png',
+        'assets/effects/laser_head.png',
+        'assets/effects/laser_charge.png',
+        'assets/effects/shield.png',
+        'assets/effects/big_laser_beam.png',
+        'assets/effects/big_laser_head.png',
+        'assets/effects/youmu_spirit_slash.png',
+        'assets/effects/youmu_ghost_blade.png',
+        'assets/effects/youmu_ghost_trail.png',
+        'assets/effects/youmu_spirit_shield.png',
+        'assets/stage/platform.png',
+        'assets/stage/platform_small.png',
+        'assets/pickups/cd.png',
+        'assets/pickups/hp.png'
     ];
 
     for (const name of SFX_FILES) {
@@ -148,20 +147,25 @@ function checkAssets() {
 
     for (const char of CHARACTER_IDS) {
         for (const expr of ['normal', 'happy', 'angry', 'sad']) {
-            if (!existsSync(join(root, 'character', `${char}_${expr}.png`))) {
-                errors.push(`Missing portrait: character/${char}_${expr}.png`);
+            if (!existsSync(join(root, 'character', char, `${expr}.png`))) {
+                errors.push(`Missing portrait: character/${char}/${expr}.png`);
             }
         }
 
-        for (const frame of ['stand', 'walk1', 'walk2', 'walk3', 'walk4', 'attack1', 'attack2', 'attack3', 'attack4']) {
-            if (!existsSync(join(root, 'action', `${char}_${frame}.png`))) {
-                errors.push(`Missing action sprite: action/${char}_${frame}.png`);
+        const requiredActionFrames = [
+            'stand',
+            ...Array.from({ length: 8 }, (_, index) => `walk${index + 1}`),
+            ...Array.from({ length: 4 }, (_, index) => `attack${index + 1}`)
+        ];
+        for (const frame of requiredActionFrames) {
+            if (!existsSync(join(root, 'action', char, `${frame}.png`))) {
+                errors.push(`Missing action sprite: action/${char}/${frame}.png`);
             }
         }
 
         for (let i = 1; i <= 4; i++) {
-            if (!existsSync(join(root, 'assets', `icon_${char}_${i}.png`))) {
-                errors.push(`Missing skill icon: assets/icon_${char}_${i}.png`);
+            if (!existsSync(join(root, 'assets', 'icons', char, `${i}.png`))) {
+                errors.push(`Missing skill icon: assets/icons/${char}/${i}.png`);
             }
         }
     }

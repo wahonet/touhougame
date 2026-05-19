@@ -204,21 +204,39 @@ function _detectThreats(fighter, opponent, platforms) {
         }
     }
 
-    // Check opponent seal (Reimu skill 1)
-    var sealSkill = opponent.skills[1];
-    if (opponent.name === 'reimu' && sealSkill.active && sealSkill.data && sealSkill.data.seal) {
-        var seal = sealSkill.data.seal;
-        if (seal.active) {
-            var sealDist = Math.sqrt(
-                Math.pow(seal.x - fighter.cx, 2) +
-                Math.pow(seal.y - (fighter.cy - fighter.hurtboxH / 2), 2)
-            );
-            if (sealDist < 200) {
+    // Check opponent barrier release (Reimu skill 1)
+    var barrierSkill = opponent.skills[1];
+    if (opponent.name === 'reimu' && barrierSkill.active && barrierSkill.data && barrierSkill.data.shockwave) {
+        var wave = barrierSkill.data.shockwave;
+        var waveDist = Math.sqrt(
+            Math.pow(wave.x - fighter.cx, 2) +
+            Math.pow(wave.y - (fighter.cy - fighter.hurtboxH / 2), 2)
+        );
+        if (waveDist < wave.radius + 40) {
+            threat.level = 2;
+            threat.type = 'projectile';
+            threat.direction = wave.x < fighter.cx ? -1 : 1;
+            threat.sourceX = wave.x;
+            threat.sourceY = wave.y;
+            return threat;
+        }
+    }
+
+    // Check opponent yin-yang orb (Reimu skill 2)
+    var orbSkill = opponent.skills[2];
+    if (opponent.name === 'reimu' && orbSkill.active && orbSkill.data && orbSkill.data.orb && orbSkill.data.orb.active) {
+        var orb = orbSkill.data.orb;
+        var odx = orb.x - fighter.cx;
+        var ody = orb.y - (fighter.cy - fighter.hurtboxH / 2);
+        var orbDist = Math.sqrt(odx * odx + ody * ody);
+        if (orbDist < 220) {
+            var orbDot = odx * (orb.vx || 0) + ody * (orb.vy || 0);
+            if (orbDot < 0 || orbDist < 120) {
                 threat.level = 2;
                 threat.type = 'projectile';
-                threat.direction = seal.x < fighter.cx ? -1 : 1;
-                threat.sourceX = seal.x;
-                threat.sourceY = seal.y;
+                threat.direction = orb.vx > 0 ? 1 : -1;
+                threat.sourceX = orb.x;
+                threat.sourceY = orb.y;
                 return threat;
             }
         }
@@ -403,11 +421,18 @@ function _checkSurvival(fighter, dt, opponent, pickups, hpRatio, dist, platforms
             return true;
         }
 
-        // Use fly to escape (Reimu)
-        if (fighter.name === 'reimu' && fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && !fighter.flying.active) {
-            fighter.activateSkill(3, opponent);
-            fighter.aiRetreatTimer = 25;
-            return true;
+        // Reimu fallback: barrier or binding circle
+        if (fighter.name === 'reimu') {
+            if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active && !fighter.shield) {
+                fighter.activateSkill(1, opponent);
+                fighter.aiRetreatTimer = 24;
+                return true;
+            }
+            if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 280) {
+                fighter.activateSkill(3, opponent);
+                fighter.aiRetreatTimer = 20;
+                return true;
+            }
         }
 
         if (fighter.name === 'cirno' && fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && !fighter.invincible) {
@@ -481,10 +506,9 @@ function _pickComboSkill(fighter, opponent, dist, dy) {
 
     // Try offensive skills first
     if (fighter.name === 'reimu') {
-        // Spell cards for spread damage
-        if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 400) return 0;
-        // Seal strike for tracking kill
-        if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active) return 1;
+        if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && dist < 220) return 3;
+        if (fighter.skills[2].cooldown <= 0 && !fighter.skills[2].active && dist < 320) return 2;
+        if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active && dist < 450) return 0;
     } else {
         // Star storm when close
         if (fighter.skills[2].cooldown <= 0 && !fighter.skills[2].active && dist < 250) return 2;
@@ -528,16 +552,15 @@ function _tryTacticalSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio, pl
 
 /** Tactical skill usage for Reimu */
 function _tryReimuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
-    // Skill 0: Spell cards — best at medium range, when roughly aligned
+    // Skill 0: Dream seal — best at medium range, when roughly aligned
     if (fighter.skills[0].cooldown <= 0 && !fighter.skills[0].active) {
-        if (dist > 200 && dist < 500 && dy < 120 && Math.random() < 0.35) {
+        if (dist > 180 && dist < 540 && dy < 140 && Math.random() < 0.4) {
             fighter.activateSkill(0, opponent);
             fighter.aiLastSkillUsed = 0;
             fighter.aiCooldown = 5;
             return true;
         }
-        // Also use when closing in and opponent is on platform
-        if (dist < 350 && dy > 50 && dy < 200 && Math.random() < 0.2) {
+        if (dist < 280 && dy < 180 && Math.random() < 0.18) {
             fighter.activateSkill(0, opponent);
             fighter.aiLastSkillUsed = 0;
             fighter.aiCooldown = 5;
@@ -545,34 +568,47 @@ function _tryReimuSkills(fighter, opponent, dist, dy, hpRatio, oppHpRatio) {
         }
     }
 
-    // Skill 1: Seal strike — kill pressure when opponent low HP, or when opponent is stuck
+    // Skill 1: Double barrier — defensive reset under pressure
     if (fighter.skills[1].cooldown <= 0 && !fighter.skills[1].active) {
-        if (oppHpRatio < 0.3 && Math.random() < 0.5) {
+        if (!fighter.shield && (hpRatio < 0.6 || (dist < 200 && Math.random() < 0.12))) {
             fighter.activateSkill(1, opponent);
             fighter.aiLastSkillUsed = 1;
-            fighter.aiCooldown = 8;
+            fighter.aiCooldown = 7;
             return true;
         }
-        // Use when opponent is far and we can't reach
-        if (dist > 400 && Math.random() < 0.2) {
+        if (!fighter.shield && hpRatio < 0.45 && dist > 220 && Math.random() < 0.2) {
             fighter.activateSkill(1, opponent);
             fighter.aiLastSkillUsed = 1;
-            fighter.aiCooldown = 8;
+            fighter.aiCooldown = 7;
             return true;
         }
     }
 
-    // Skill 3: Fly — escape pressure, reach platforms, dodge horizontal attacks
-    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active && !fighter.flying.active) {
-        // Use when pressured on ground
-        if (hpRatio < 0.4 && dist < 200 && Math.random() < 0.2) {
+    // Skill 2: Yin-yang orb — zone mid range and punish retreat
+    if (fighter.skills[2].cooldown <= 0 && !fighter.skills[2].active) {
+        if (dist > 140 && dist < 520 && dy < 160 && Math.random() < 0.36) {
+            fighter.activateSkill(2, opponent);
+            fighter.aiLastSkillUsed = 2;
+            fighter.aiCooldown = 6;
+            return true;
+        }
+        if (oppHpRatio < 0.55 && dist < 380 && Math.random() < 0.2) {
+            fighter.activateSkill(2, opponent);
+            fighter.aiLastSkillUsed = 2;
+            fighter.aiCooldown = 6;
+            return true;
+        }
+    }
+
+    // Skill 3: Binding circle — close-range trap or finisher
+    if (fighter.skills[3].cooldown <= 0 && !fighter.skills[3].active) {
+        if (dist < 240 && dy < 140 && Math.random() < 0.35) {
             fighter.activateSkill(3, opponent);
             fighter.aiLastSkillUsed = 3;
             fighter.aiCooldown = 5;
             return true;
         }
-        // Use to approach when opponent is on high platform
-        if (dy > 150 && Math.random() < 0.25) {
+        if (oppHpRatio < 0.35 && dist < 320 && Math.random() < 0.45) {
             fighter.activateSkill(3, opponent);
             fighter.aiLastSkillUsed = 3;
             fighter.aiCooldown = 5;

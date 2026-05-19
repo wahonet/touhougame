@@ -54,15 +54,14 @@ export async function preloadAssets() {
         loadEffectAssets(),
         loadSkillIcons(),
         loadStageAssets(),
-        loadPickupAssets(),
-        loadDefeatedSprites()
+        loadPickupAssets()
     ]);
 }
 
 async function loadPortraits() {
     for (const char of CHARACTER_IDS) {
         for (const expr of PORTRAIT_EXPRESSIONS) {
-            const img = await loadImage(`character/${char}_${expr}.png`);
+            const img = await loadImage(`character/${char}/${expr}.png`);
             if (img) {
                 Assets.portraits[char][expr] = scaleImage(img, 500);
             }
@@ -344,7 +343,7 @@ function generateFallbackSkillIcon(charName, index) {
 
 async function loadActionSprites() {
     for (const char of CHARACTER_IDS) {
-        const standImg = await loadImage(`action/${char}_stand.png`);
+        const standImg = await loadImage(`action/${char}/stand.png`);
         if (standImg) {
             const scaled = scaleImage(standImg, SPRITE_DISPLAY_H);
             Assets.sprites[char].left.stand = scaled;
@@ -357,7 +356,7 @@ async function loadActionSprites() {
 
         const walkFrames = [];
         for (let i = 1; i <= ACTION_FRAME_LIMITS.walk; i++) {
-            const img = await loadImage(`action/${char}_walk${i}.png`);
+            const img = await loadImage(`action/${char}/walk${i}.png`);
             if (img) {
                 walkFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
             }
@@ -372,7 +371,7 @@ async function loadActionSprites() {
 
         const attackFrames = [];
         for (let i = 1; i <= ACTION_FRAME_LIMITS.attack; i++) {
-            const img = await loadImage(`action/${char}_attack${i}.png`);
+            const img = await loadImage(`action/${char}/attack${i}.png`);
             if (img) {
                 attackFrames.push(scaleImage(img, SPRITE_DISPLAY_H));
             }
@@ -384,13 +383,6 @@ async function loadActionSprites() {
         }
         Assets.sprites[char].left.attack = attackFrames;
         Assets.sprites[char].right.attack = attackFrames.map(frame => flipImage(frame));
-    }
-
-    const reimuFlyImg = await loadImage('action/reimu_fly.png');
-    if (reimuFlyImg) {
-        const scaledFly = scaleImage(reimuFlyImg, SPRITE_DISPLAY_H);
-        Assets.sprites.reimu.left.fly = scaledFly;
-        Assets.sprites.reimu.right.fly = flipImage(scaledFly);
     }
 }
 
@@ -406,19 +398,18 @@ async function loadEffectAssets() {
     }
 
     const singleEffects = [
-        ['spellcardHit', 'assets/spellcard_hit.png'],
-        ['laserBeam', 'assets/laser_beam.png'],
-        ['laserHead', 'assets/laser_head.png'],
-        ['laserCharge', 'assets/laser_charge.png'],
-        ['shield', 'assets/shield.png'],
-        ['sealHit', 'assets/seal_hit.png'],
-        ['bigLaserBeam', 'assets/big_laser_beam.png'],
-        ['bigLaserHead', 'assets/big_laser_head.png'],
-        ['flyAura', 'assets/fly_aura.png'],
-        ['youmuSpiritSlash', 'assets/youmu_spirit_slash.png'],
-        ['youmuGhostBlade', 'assets/youmu_ghost_blade.png'],
-        ['youmuGhostTrail', 'assets/youmu_ghost_trail.png'],
-        ['youmuSpiritShield', 'assets/youmu_spirit_shield.png']
+        ['spellcardHit', 'assets/effects/spellcard_hit.png'],
+        ['laserBeam', 'assets/effects/laser_beam.png'],
+        ['laserHead', 'assets/effects/laser_head.png'],
+        ['laserCharge', 'assets/effects/laser_charge.png'],
+        ['shield', 'assets/effects/shield.png'],
+        ['sealHit', 'assets/effects/seal_hit.png'],
+        ['bigLaserBeam', 'assets/effects/big_laser_beam.png'],
+        ['bigLaserHead', 'assets/effects/big_laser_head.png'],
+        ['youmuSpiritSlash', 'assets/effects/youmu_spirit_slash.png'],
+        ['youmuGhostBlade', 'assets/effects/youmu_ghost_blade.png'],
+        ['youmuGhostTrail', 'assets/effects/youmu_ghost_trail.png'],
+        ['youmuSpiritShield', 'assets/effects/youmu_spirit_shield.png']
     ];
 
     for (const [key, path] of singleEffects) {
@@ -433,7 +424,7 @@ async function loadSkillIcons() {
     for (const char of CHARACTER_IDS) {
         Assets.skillIcons[char] = [];
         for (let i = 1; i <= 4; i++) {
-            const iconImg = await loadImage(`assets/icon_${char}_${i}.png`);
+            const iconImg = await loadImage(`assets/icons/${char}/${i}.png`);
             if (iconImg) {
                 Assets.skillIcons[char].push(iconImg);
             } else {
@@ -444,35 +435,25 @@ async function loadSkillIcons() {
 }
 
 async function loadStageAssets() {
-    const platformImg = await loadImage('assets/platform.png');
+    const platformImg = await loadImage('assets/stage/platform.png');
     if (platformImg) {
         Assets.platform = platformImg;
     }
 
-    const platformSmallImg = await loadImage('assets/platform_small.png');
+    const platformSmallImg = await loadImage('assets/stage/platform_small.png');
     if (platformSmallImg) {
         Assets.platformSmall = platformSmallImg;
     }
 }
 
 async function loadPickupAssets() {
-    const pickupCdImg = await loadImage('assets/pickup_cd.png');
+    const pickupCdImg = await loadImage('assets/pickups/cd.png');
     if (pickupCdImg) {
         Assets.pickupCd = pickupCdImg;
     }
 
-    const pickupHpImg = await loadImage('assets/pickup_hp.png');
+    const pickupHpImg = await loadImage('assets/pickups/hp.png');
     if (pickupHpImg) {
         Assets.pickupHp = pickupHpImg;
-    }
-}
-
-async function loadDefeatedSprites() {
-    for (const char of CHARACTER_IDS) {
-        const defImg = await loadImage(`assets/${char}_defeated.png`);
-        if (defImg) {
-            const scale = SPRITE_DISPLAY_H / Math.max(defImg.height, 1);
-            Assets.defeated[char] = scaleImage(defImg, Math.round(defImg.height * scale));
-        }
     }
 }

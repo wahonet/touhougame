@@ -177,13 +177,14 @@ def process_static_frame(path: Path, *, clean_edge_fragments: bool) -> None:
 
 
 def process_walk_cycle(character: str) -> None:
-    source_paths = [ACTION_DIR / f"{character}_walk{i}.png" for i in range(1, 5)]
+    character_dir = ACTION_DIR / character
+    source_paths = [character_dir / f"walk{i}.png" for i in range(1, 5)]
     if not all(path.exists() for path in source_paths):
         return
 
     frames = []
     for path in source_paths:
-        backup = BACKUP_DIR / path.name
+        backup = BACKUP_DIR / character / path.name
         source = backup if backup.exists() else path
         image = Image.open(source).convert("RGBA")
         frames.append(remove_small_edge_components(image))
@@ -196,7 +197,7 @@ def process_walk_cycle(character: str) -> None:
         expanded.append(midpoint_frame(frame, next_frame))
 
     for index, frame in enumerate(expanded[:WALK_TARGET_FRAMES], start=1):
-        frame.save(ACTION_DIR / f"{character}_walk{index}.png")
+        frame.save(character_dir / f"walk{index}.png")
 
 
 def make_contact_sheet() -> None:
@@ -216,7 +217,7 @@ def make_contact_sheet() -> None:
         y0 = margin + row * (thumb_h + label_h)
         draw.text((2, y0 + 4), character, fill=(255, 255, 255, 255))
         for col, frame_name in enumerate(frames):
-            path = ACTION_DIR / f"{character}_{frame_name}.png"
+            path = ACTION_DIR / character / f"{frame_name}.png"
             x0 = margin + col * thumb_w
             y1 = y0 + label_h
             draw.rectangle([x0, y1, x0 + thumb_w - 4, y1 + thumb_h - 4], outline=(80, 80, 90, 255))
@@ -238,7 +239,8 @@ def edge_report() -> None:
     lines: list[str] = []
     for character in CHARACTERS:
         risky = []
-        for path in sorted(ACTION_DIR.glob(f"{character}_*.png")):
+        character_dir = ACTION_DIR / character
+        for path in sorted(character_dir.glob("*.png")):
             image = Image.open(path).convert("RGBA")
             alpha = image.getchannel("A")
             bbox = alpha_bbox(image)
@@ -258,26 +260,24 @@ def edge_report() -> None:
 
 def main() -> None:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    for path in ACTION_DIR.glob("*.png"):
-        backup = BACKUP_DIR / path.name
+    for path in ACTION_DIR.glob("*/*.png"):
+        backup = BACKUP_DIR / path.parent.name / path.name
+        backup.parent.mkdir(parents=True, exist_ok=True)
         if not backup.exists():
             backup.write_bytes(path.read_bytes())
 
     for character in CHARACTERS:
-        stand = ACTION_DIR / f"{character}_stand.png"
+        character_dir = ACTION_DIR / character
+        stand = character_dir / "stand.png"
         if stand.exists():
             process_static_frame(stand, clean_edge_fragments=True)
 
         process_walk_cycle(character)
 
         for index in range(1, 5):
-            attack = ACTION_DIR / f"{character}_attack{index}.png"
+            attack = character_dir / f"attack{index}.png"
             if attack.exists():
                 process_static_frame(attack, clean_edge_fragments=False)
-
-    fly = ACTION_DIR / "reimu_fly.png"
-    if fly.exists():
-        process_static_frame(fly, clean_edge_fragments=True)
 
     make_contact_sheet()
     edge_report()

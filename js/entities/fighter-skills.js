@@ -14,10 +14,10 @@ const updateSkillOnly = update => (fighter, skill, dt) => update(skill, dt);
 
 const SKILL_REGISTRY = {
     reimu: [
-        { activate: _activateReimuSpellCards, update: _updateReimuSpellCards, draw: _drawReimuSpellCards },
-        { activate: _activateReimuSealStrike, update: _updateReimuSealStrike, draw: _drawReimuSealStrike },
-        { activate: _activateReimuBarrier, update: _updateReimuBarrier },
-        { activate: _activateReimuFlight, update: _updateReimuFlight }
+        { activate: _activateReimuDreamSeal, update: _updateReimuDreamSeal, draw: _drawReimuDreamSeal },
+        { activate: _activateReimuDoubleBarrier, update: _updateReimuDoubleBarrier, draw: _drawReimuDoubleBarrier },
+        { activate: _activateReimuYinYangOrb, update: _updateReimuYinYangOrb, draw: _drawReimuYinYangOrb },
+        { activate: _activateReimuBindingCircle, update: _updateReimuBindingCircle, draw: _drawReimuBindingCircle }
     ],
     marisa: [
         { activate: _activateMarisaLaser, update: _updateMarisaLaser, draw: _drawMarisaLaser },
@@ -113,8 +113,8 @@ export function activateSkill(fighter, index, opponent) {
 
 // ---- REIMU SKILLS ----
 
-/** Skill 0: 梦想天生 - 8 spread projectiles, 15 dmg each */
-function _activateReimuSpellCards(fighter, skill) {
+/** Skill 0: 灵符「梦想封印」 - 8 homing amulets */
+function _activateReimuDreamSeal(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
     skill.data = {
         projectiles: [],
@@ -124,12 +124,15 @@ function _activateReimuSpellCards(fighter, skill) {
 
     const dir = fighter.facing === 'right' ? 1 : -1;
     for (let i = 0; i < 8; i++) {
-        const angle = (-30 + (60 / 7) * i) * Math.PI / 180;
+        const angle = (-28 + (56 / 7) * i) * Math.PI / 180;
+        const speed = 7.5 + (i % 2) * 0.6;
         skill.data.projectiles.push({
             x: fighter.cx + dir * 30,
-            y: fighter.cy - fighter.hurtboxH / 2,
-            vx: Math.cos(angle) * 10 * dir,
-            vy: Math.sin(angle) * 10,
+            y: fighter.cy - fighter.hurtboxH * 0.58,
+            vx: Math.cos(angle) * speed * dir,
+            vy: Math.sin(angle) * speed,
+            speed: 8.8,
+            turnRate: 0.12,
             active: true,
             frame: 0,
             hitTarget: false
@@ -137,49 +140,62 @@ function _activateReimuSpellCards(fighter, skill) {
     }
 }
 
-/** Skill 1: 梦想封印 - Tracking seal, 150 dmg */
-function _activateReimuSealStrike(fighter, skill, opponent) {
-    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
-    const dir = fighter.facing === 'right' ? 1 : -1;
-    skill.data = {
-        seal: {
-            x: fighter.cx + dir * 30,
-            y: fighter.cy - fighter.hurtboxH / 2,
-            active: true,
-            frame: 0,
-            hit: false
-        },
-        hitEffects: [],
-        hitTimer: 0
-    };
-}
-
-/** Skill 2: 二重结界 - Shield 300 HP, 10s duration */
-function _activateReimuBarrier(fighter, skill) {
+/** Skill 1: 梦符「二重结界」 - shield that releases a repelling pulse */
+function _activateReimuDoubleBarrier(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_shield');
     fighter.shield = {
-        hp: 300,
-        maxHp: 300,
-        duration: 10,
+        hp: 320,
+        maxHp: 320,
+        duration: 6,
         timer: 0,
         flashTimer: 0,
         shatterTimer: 0
     };
-    skill.data = { done: false };
+    skill.data = {
+        phase: 'shield',
+        pulse: 0,
+        shockwave: null,
+        hitTargets: [],
+        hitEffects: [],
+        released: false
+    };
 }
 
-/** Skill 3: 飞行 - 5 seconds of flight */
-function _activateReimuFlight(fighter, skill) {
+/** Skill 2: 宝符「阴阳宝玉」 - bouncing orb with knockback */
+function _activateReimuYinYangOrb(fighter, skill) {
+    if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    skill.data = {
+        orb: {
+            x: fighter.cx + dir * 38,
+            y: fighter.cy - fighter.hurtboxH * 0.48,
+            vx: dir * 9.2,
+            vy: -8.2,
+            radius: 23,
+            dir,
+            frame: 0,
+            bounces: 0,
+            active: true
+        },
+        hitTargets: [],
+        hitEffects: []
+    };
+}
+
+/** Skill 3: 神技「八方鬼缚阵」 - short binding damage field */
+function _activateReimuBindingCircle(fighter, skill) {
     if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_skill');
-    fighter.flying.active = true;
-    fighter.flying.timer = 0;
-    fighter.state = 'idle';
-    fighter._atkHit = false;
-    fighter.velocityX = 0;
-    fighter.velocityY = 0;
-    fighter.isOnGround = false;
-    fighter._currentPlatform = null;
-    skill.data = { done: false };
+    skill.data = {
+        cx: fighter.cx,
+        cy: fighter.cy - fighter.hurtboxH / 2,
+        radius: 168,
+        timer: 0,
+        duration: 1.45,
+        damageTicks: [false, false, false, false],
+        rings: Array.from({ length: 3 }, (_, i) => ({ radius: 42 + i * 34, phase: i * 0.8 })),
+        seals: Array.from({ length: 8 }, (_, i) => ({ angle: i * Math.PI * 2 / 8, phase: i * 0.5 })),
+        hitEffects: []
+    };
 }
 
 // ---- MARISA SKILLS ----
@@ -987,13 +1003,24 @@ export function updateSkillByIndex(fighter, index, dt, opponent) {
 
 // ---- REIMU SKILL UPDATES ----
 
-/** Update Reimu spell card projectiles */
-function _updateReimuSpellCards(fighter, skill, dt, opponent) {
+/** Update Reimu dream seal projectiles */
+function _updateReimuDreamSeal(fighter, skill, dt, opponent) {
     const data = skill.data;
     data.age++;
 
     for (const proj of data.projectiles) {
         if (!proj.active) continue;
+
+        if (opponent.state !== 'dead') {
+            const hb = opponent.getHurtbox();
+            const tx = hb.x + hb.w / 2;
+            const ty = hb.y + hb.h * 0.35;
+            const dx = tx - proj.x;
+            const dy = ty - proj.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            proj.vx = proj.vx * (1 - proj.turnRate) + (dx / dist) * proj.speed * proj.turnRate;
+            proj.vy = proj.vy * (1 - proj.turnRate) + (dy / dist) * proj.speed * proj.turnRate;
+        }
 
         proj.x += proj.vx;
         proj.y += proj.vy;
@@ -1004,7 +1031,7 @@ function _updateReimuSpellCards(fighter, skill, dt, opponent) {
             if (proj.x > hurtbox.x && proj.x < hurtbox.x + hurtbox.w &&
                 proj.y > hurtbox.y && proj.y < hurtbox.y + hurtbox.h) {
                 proj.hitTarget = true;
-                opponent.damage(15);
+                opponent.damage(18);
                 data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
                 proj.active = false;
             }
@@ -1034,75 +1061,160 @@ function _updateReimuSpellCards(fighter, skill, dt, opponent) {
     }
 }
 
-/** Update Reimu seal strike */
-function _updateReimuSealStrike(fighter, skill, dt, opponent) {
+/** Update Reimu double barrier */
+function _updateReimuDoubleBarrier(fighter, skill, dt, opponent) {
     const data = skill.data;
-    const seal = data.seal;
+    data.pulse += dt;
 
-    if (seal.active) {
-        seal.frame++;
-
-        // Move toward opponent
-        const dx = opponent.cx - seal.x;
-        const dy = (opponent.cy - opponent.hurtboxH / 2) - seal.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 50) {
-            seal.x += (dx / dist) * 6;
-            seal.y += (dy / dist) * 6;
-        }
-
-        // Hit check
-        if (!seal.hit && opponent.state !== 'dead') {
-            const hurtbox = opponent.getHurtbox();
-            if (seal.x > hurtbox.x && seal.x < hurtbox.x + hurtbox.w &&
-                seal.y > hurtbox.y && seal.y < hurtbox.y + hurtbox.h) {
-                seal.hit = true;
-                seal.active = false;
-                opponent.damage(150);
-                data.hitEffects.push({ x: seal.x, y: seal.y, timer: 30 });
-                data.hitTimer = 0;
-            }
-        }
-
-        // Timeout
-        if (seal.frame > 120) {
-            seal.active = false;
-            if (!seal.hit) {
-                skill.active = false;
-                skill.data = {};
-                return;
-            }
+    if (!data.released && fighter.shield) {
+        const shield = fighter.shield;
+        const endingSoon = shield.timer + dt >= shield.duration;
+        if (shield.hp <= 0 || endingSoon) {
+            data.released = true;
+            data.shockwave = {
+                x: fighter.cx,
+                y: fighter.cy - fighter.hurtboxH / 2,
+                radius: 72,
+                maxRadius: 210,
+                frame: 0
+            };
+            if (typeof AudioManager !== 'undefined') AudioManager.play('sfx_seal');
         }
     }
 
-    // Update hit effects (seal animation at impact)
+    if (data.shockwave) {
+        data.shockwave.frame++;
+        data.shockwave.radius += 12;
+        if (opponent.state !== 'dead' && !data.hitTargets.includes(opponent)) {
+            const hb = opponent.getHurtbox();
+            const dx = hb.x + hb.w / 2 - data.shockwave.x;
+            const dy = hb.y + hb.h / 2 - data.shockwave.y;
+            if (dx * dx + dy * dy <= data.shockwave.radius * data.shockwave.radius) {
+                data.hitTargets.push(opponent);
+                opponent.damage(60);
+                opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.3);
+                opponent.velocityX = (opponent.velocityX || 0) + Math.sign(opponent.cx - fighter.cx) * 3;
+                data.hitEffects.push({ x: hb.x + hb.w / 2, y: hb.y + hb.h / 2, timer: 24 });
+            }
+        }
+        if (data.shockwave.radius >= data.shockwave.maxRadius) {
+            data.shockwave = null;
+        }
+    }
+
     if (data.hitEffects.length > 0) {
-        data.hitTimer++;
         for (let i = data.hitEffects.length - 1; i >= 0; i--) {
             data.hitEffects[i].timer--;
             if (data.hitEffects[i].timer <= 0) {
                 data.hitEffects.splice(i, 1);
             }
         }
-        if (data.hitEffects.length === 0) {
-            skill.active = false;
-            skill.data = {};
-        }
     }
-}
 
-/** Update Reimu barrier (shield ticks handled in main update) */
-function _updateReimuBarrier(fighter, skill, dt) {
-    if (!fighter.shield) {
+    if (!fighter.shield && !data.shockwave && data.hitEffects.length === 0) {
         skill.active = false;
         skill.data = {};
     }
 }
 
-/** Update Reimu flight */
-function _updateReimuFlight(fighter, skill, dt) {
-    if (!fighter.flying.active) {
+/** Update Reimu yin-yang orb */
+function _updateReimuYinYangOrb(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    const orb = data.orb;
+    if (!orb || !orb.active) {
+        _tickHitEffects(data.hitEffects);
+        if (!data.hitEffects.length) {
+            skill.active = false;
+            skill.data = {};
+        }
+        return;
+    }
+
+    orb.frame++;
+    orb.x += orb.vx;
+    orb.y += orb.vy;
+    orb.vy += 0.42;
+
+    const boundX = Game.gameMode === 'pve' ? (Game.pveLevelWidth || 8000) : ARENA_WIDTH;
+    if (orb.x < orb.radius || orb.x > boundX - orb.radius) {
+        orb.vx *= -0.88;
+        orb.x = Math.max(orb.radius, Math.min(boundX - orb.radius, orb.x));
+        orb.bounces++;
+    }
+
+    if (orb.y < orb.radius + 12) {
+        orb.vy *= -0.72;
+        orb.y = orb.radius + 12;
+        orb.bounces++;
+    } else if (orb.y > fighter.groundY - orb.radius) {
+        orb.y = fighter.groundY - orb.radius;
+        orb.vy *= -0.68;
+        orb.vx *= 0.92;
+        orb.bounces++;
+    }
+
+    if (opponent.state !== 'dead' && !data.hitTargets.includes(opponent)) {
+        const hb = opponent.getHurtbox();
+        const orbRect = { x: orb.x - orb.radius, y: orb.y - orb.radius, w: orb.radius * 2, h: orb.radius * 2 };
+        if (rectsOverlap(orbRect, hb)) {
+            data.hitTargets.push(opponent);
+            opponent.damage(105);
+            opponent.stunTimer = Math.max(opponent.stunTimer || 0, 0.28);
+            opponent.velocityX = (opponent.velocityX || 0) + Math.sign(orb.vx || (fighter.facing === 'right' ? 1 : -1)) * 5;
+            data.hitEffects.push({ x: orb.x, y: orb.y, timer: 24 });
+            orb.vx *= -0.4;
+            orb.vy *= -0.4;
+            orb.bounces++;
+        }
+    }
+
+    if (orb.frame > 150 || orb.bounces > 4) {
+        orb.active = false;
+    }
+
+    _tickHitEffects(data.hitEffects);
+
+    if (!orb.active && data.hitEffects.length === 0) {
+        skill.active = false;
+        skill.data = {};
+    }
+}
+
+/** Update Reimu binding circle */
+function _updateReimuBindingCircle(fighter, skill, dt, opponent) {
+    const data = skill.data;
+    data.timer += dt;
+
+    const tickTimes = [0.18, 0.48, 0.78, 1.08];
+    const tickDamage = [12, 12, 14, 24];
+    const target = opponent && opponent.state !== 'dead' ? opponent : null;
+
+    if (target) {
+        const hb = target.getHurtbox();
+        const cx = hb.x + hb.w / 2;
+        const cy = hb.y + hb.h / 2;
+        const dx = cx - data.cx;
+        const dy = cy - data.cy;
+        const inside = dx * dx + dy * dy <= data.radius * data.radius;
+
+        if (inside) {
+            target.slowTimer = Math.max(target.slowTimer || 0, 0.55);
+            target.slowMultiplier = Math.min(target.slowMultiplier || 1, 0.45);
+
+            for (let i = 0; i < tickTimes.length; i++) {
+                if (!data.damageTicks[i] && data.timer >= tickTimes[i]) {
+                    data.damageTicks[i] = true;
+                    target.damage(tickDamage[i]);
+                    target.stunTimer = Math.max(target.stunTimer || 0, i < 3 ? 0.16 : 0.3);
+                    target.velocityX = (target.velocityX || 0) + Math.sign(fighter.cx - target.cx) * 2.5;
+                    data.hitEffects.push({ x: cx, y: cy, timer: 12 });
+                    emitHitImpact({ x: cx, y: cy, color: '#ffccff', shake: 3, maxShake: 6 });
+                }
+            }
+        }
+    }
+
+    if (data.timer >= data.duration) {
         skill.active = false;
         skill.data = {};
     }
@@ -2185,107 +2297,193 @@ export function drawSkill(fighter, ctx) {
         _drawShield(fighter, ctx);
     }
 
-    // Draw flying aura
-    if (fighter.flying.active) {
-        _drawFlyAura(fighter, ctx);
-    }
 }
 
 // ---- REIMU DRAW ----
 
-function _drawReimuSpellCards(fighter, ctx, data) {
-    // Draw projectiles
+function _drawReimuDreamSeal(fighter, ctx, data) {
     for (const proj of data.projectiles) {
         if (!proj.active) continue;
         const frameIndex = Math.floor(proj.frame / 8) % 4;
         const sprite = Assets.effects.spellcard[frameIndex];
+        const trailAlpha = 0.16 + Math.min(0.35, Math.abs(proj.vx) * 0.03);
+
+        ctx.save();
+        ctx.globalAlpha = trailAlpha;
+        ctx.strokeStyle = '#ff9ab0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(proj.x - proj.vx * 2, proj.y - proj.vy * 2);
+        ctx.lineTo(proj.x, proj.y);
+        ctx.stroke();
+        ctx.restore();
+
         if (sprite) {
-            ctx.drawImage(sprite, proj.x - 16, proj.y - 16, 32, 32);
+            ctx.save();
+            ctx.translate(proj.x, proj.y);
+            ctx.rotate(Math.atan2(proj.vy, proj.vx));
+            ctx.drawImage(sprite, -16, -16, 32, 32);
+            ctx.restore();
         } else {
             ctx.save();
+            ctx.translate(proj.x, proj.y);
+            ctx.rotate(Math.atan2(proj.vy, proj.vx) * 0.6);
             ctx.fillStyle = '#ff6b8a';
             ctx.shadowColor = '#ff6b8a';
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.arc(proj.x, proj.y, 8, 0, Math.PI * 2);
+            ctx.moveTo(0, -10);
+            ctx.lineTo(8, 0);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(-8, 0);
+            ctx.closePath();
             ctx.fill();
             ctx.restore();
         }
     }
 
-    // Draw hit effects
-    for (const effect of data.hitEffects) {
-        const sprite = Assets.effects.spellcardHit;
-        if (sprite) {
-            ctx.drawImage(sprite, effect.x - 24, effect.y - 24, 48, 48);
-        } else {
-            ctx.save();
-            ctx.fillStyle = 'rgba(255, 100, 50, 0.7)';
-            ctx.shadowColor = '#ff6633';
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, 20, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
-    }
+    _drawSparkEffects(ctx, data.hitEffects, '#ff6b8a');
 }
 
-function _drawReimuSealStrike(fighter, ctx, data) {
-    const seal = data.seal;
+function _drawReimuDoubleBarrier(fighter, ctx, data) {
+    const cx = fighter.cx;
+    const cy = fighter.cy - fighter.hurtboxH / 2;
+    const pulse = 0.5 + Math.sin(Date.now() * 0.01 + data.pulse * 8) * 0.12;
 
-    // Draw traveling seal
-    if (seal.active) {
-        const frameIndex = Math.floor(seal.frame / 6) % 4;
-        const sealSprite = Assets.effects.seal[frameIndex];
-        if (sealSprite) {
-            // Growing/shrinking effect
-            const size = 40 + Math.sin(seal.frame * 0.15) * 10;
-            ctx.save();
-            ctx.drawImage(sealSprite, seal.x - size / 2, seal.y - size / 2, size, size);
-            ctx.restore();
-        } else {
-            ctx.save();
-            ctx.fillStyle = '#ff4466';
-            ctx.shadowColor = '#ff4466';
-            ctx.shadowBlur = 15;
-            const size = 20 + Math.sin(seal.frame * 0.15) * 5;
-            ctx.beginPath();
-            ctx.arc(seal.x, seal.y, size, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
+    ctx.save();
+    ctx.globalAlpha = 0.35 + pulse * 0.35;
+    ctx.strokeStyle = '#ffd9f0';
+    ctx.shadowColor = '#ff9ab0';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 48 + pulse * 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 76 + pulse * 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    if (data.shockwave) {
+        const wave = data.shockwave;
+        const alpha = Math.max(0, 1 - wave.radius / wave.maxRadius);
+        ctx.save();
+        ctx.globalAlpha = 0.28 * alpha;
+        ctx.strokeStyle = '#ffccff';
+        ctx.shadowColor = '#ffccff';
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
-    // Draw hit effects at impact
-    for (const effect of data.hitEffects) {
-        const remaining = effect.timer;
-        if (remaining > 15) {
-            // Show seal animation
-            const idx = Math.min(3, Math.floor((30 - remaining) / 4));
-            const sealSprite = Assets.effects.seal[idx];
-            if (sealSprite) {
-                const size = 60 + (30 - remaining) * 2;
-                ctx.drawImage(sealSprite, effect.x - size / 2, effect.y - size / 2, size, size);
-            }
-        } else {
-            // Show seal_hit
-            const hitSprite = Assets.effects.sealHit;
-            if (hitSprite) {
-                const size = 80 * (remaining / 15);
-                ctx.drawImage(hitSprite, effect.x - size / 2, effect.y - size / 2, size, size);
-            } else {
-                ctx.save();
-                ctx.fillStyle = `rgba(255, 200, 100, ${remaining / 15})`;
-                ctx.shadowColor = '#ffcc66';
-                ctx.shadowBlur = 20;
-                ctx.beginPath();
-                ctx.arc(effect.x, effect.y, 30 * (remaining / 15), 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
+    _drawSparkEffects(ctx, data.hitEffects, '#ffccff');
+}
+
+function _drawReimuYinYangOrb(fighter, ctx, data) {
+    const orb = data.orb;
+    if (orb && orb.active) {
+        const spin = orb.frame * 0.18;
+        const r = orb.radius;
+
+        ctx.save();
+        ctx.translate(orb.x, orb.y);
+        ctx.rotate(spin);
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#f4efe7';
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#1b1b1b';
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.34, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f4efe7';
+        ctx.beginPath();
+        ctx.arc(0, r * 0.34, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#1b1b1b';
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.34, r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f4efe7';
+        ctx.beginPath();
+        ctx.arc(0, r * 0.34, r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ff9ab0';
+        ctx.shadowColor = '#ff9ab0';
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
+
+    _drawSparkEffects(ctx, data.hitEffects, '#ff9ab0');
+}
+
+function _drawReimuBindingCircle(fighter, ctx, data) {
+    const p = Math.min(1, data.timer / data.duration);
+    const alpha = p < 0.15 ? p / 0.15 : 1 - Math.max(0, p - 0.72) / 0.28;
+    const pulse = 0.7 + Math.sin(data.timer * 8) * 0.08;
+
+    ctx.save();
+    ctx.globalAlpha = 0.18 * alpha;
+    ctx.fillStyle = '#f3d4ff';
+    ctx.beginPath();
+    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.55 * alpha;
+    ctx.strokeStyle = '#ffccff';
+    ctx.shadowColor = '#ffccff';
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 2.5;
+    for (const ring of data.rings) {
+        ctx.beginPath();
+        ctx.arc(data.cx, data.cy, ring.radius + Math.sin(data.timer * 6 + ring.phase) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.9 * alpha;
+    ctx.strokeStyle = '#ff9ab0';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ff9ab0';
+    ctx.shadowBlur = 12;
+    for (const seal of data.seals) {
+        const a = seal.angle + data.timer * 2.2;
+        const x = data.cx + Math.cos(a) * (data.radius * 0.72);
+        const y = data.cy + Math.sin(a) * (data.radius * 0.58);
+        ctx.beginPath();
+        ctx.arc(x, y, 5 + pulse * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.45 * alpha;
+    ctx.fillStyle = '#ff6b8a';
+    ctx.shadowColor = '#ff6b8a';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(data.cx, data.cy, 18 + pulse * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    _drawSparkEffects(ctx, data.hitEffects, '#ffccff');
 }
 
 // ---- MARISA DRAW ----
@@ -3377,28 +3575,3 @@ function _drawShield(fighter, ctx) {
     ctx.restore();
 }
 
-function _drawFlyAura(fighter, ctx) {
-    const sprite = Assets.effects.flyAura;
-    const cx = fighter.cx;
-    const cy = fighter.cy + 5; // beneath feet
-
-    if (sprite) {
-        const w = sprite.width * 0.5;
-        const h = sprite.height * 0.5;
-        ctx.save();
-        ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.008) * 0.2;
-        ctx.drawImage(sprite, cx - w / 2, cy - h / 2, w, h);
-        ctx.restore();
-    } else {
-        // Fallback: draw glowing circle
-        ctx.save();
-        ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.008) * 0.15;
-        ctx.fillStyle = '#cc88ff';
-        ctx.shadowColor = '#cc88ff';
-        ctx.shadowBlur = 20;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, 30, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-}

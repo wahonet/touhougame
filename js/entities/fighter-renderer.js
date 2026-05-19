@@ -41,33 +41,6 @@ export function draw(fighter, ctx) {
         return;
     }
 
-    // During flying state and not attacking, use fly sprite
-    if (fighter.flying.active && fighter.state !== 'attack') {
-        const dir = fighter.facing;
-        const flySprite = Assets.sprites[fighter.name] &&
-            Assets.sprites[fighter.name][dir] &&
-            Assets.sprites[fighter.name][dir].fly;
-
-        if (flySprite) {
-            const fw = flySprite.width;
-            const fh = flySprite.height;
-            const x = fighter.cx - fw / 2;
-            const y = fighter.cy - fh;
-
-            ctx.drawImage(flySprite, x, y);
-
-            // Hit flash overlay
-            if (fighter.hitFlash > 0) {
-                ctx.save();
-                ctx.globalAlpha = 0.5;
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                ctx.fillRect(x, y, fw, fh);
-                ctx.restore();
-            }
-            return;
-        }
-    }
-
     const frame = fighter.currentAnim.currentFrame;
     if (!frame) return;
 

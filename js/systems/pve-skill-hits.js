@@ -21,8 +21,10 @@ function getEnemyCenter(enemy) {
 
 const PVE_SKILL_HIT_HANDLERS = {
     reimu: [
-        hitReimuSpellCards,
-        hitReimuSealStrike
+        hitReimuDreamSeal,
+        hitReimuDoubleBarrier,
+        hitReimuYinYangOrb,
+        hitReimuBindingCircle
     ],
     marisa: [
         hitMarisaLasers,
@@ -88,7 +90,7 @@ export function applyPlayerSkillHitsToEnemy(player, enemy) {
     }
 }
 
-function hitReimuSpellCards(player, enemy) {
+function hitReimuDreamSeal(player, enemy) {
     const skill = player.skills[0];
     if (!skill.active || !skill.data?.projectiles) return;
 
@@ -98,23 +100,76 @@ function hitReimuSpellCards(player, enemy) {
         if (!pointInRect(proj.x, proj.y, hurtbox)) continue;
 
         proj.hitTarget = true;
-        enemy.damage(15);
+        enemy.damage(18);
         skill.data.hitEffects.push({ x: proj.x, y: proj.y, timer: 10 });
         proj.active = false;
     }
 }
 
-function hitReimuSealStrike(player, enemy) {
+function hitReimuDoubleBarrier(player, enemy) {
     const skill = player.skills[1];
-    const seal = skill.data?.seal;
-    if (!skill.active || !seal || !seal.active || seal.hit) return;
+    const wave = skill.data?.shockwave;
+    if (!skill.active || !wave) return;
 
-    if (!pointInRect(seal.x, seal.y, enemy.getHurtbox())) return;
+    const center = getEnemyCenter(enemy);
+    const dx = center.x - wave.x;
+    const dy = center.y - wave.y;
+    if (dx * dx + dy * dy > wave.radius * wave.radius) return;
 
-    seal.hit = true;
-    seal.active = false;
-    enemy.damage(150);
-    skill.data.hitEffects.push({ x: seal.x, y: seal.y, timer: 30 });
+    const hitEnemies = ensureSet(skill.data, '_pveHitEnemies');
+    if (hitEnemies.has(enemy)) return;
+
+    hitEnemies.add(enemy);
+    enemy.damage(60);
+    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.3);
+    enemy.velocityX = (enemy.velocityX || 0) + Math.sign(center.x - wave.x) * 2;
+}
+
+function hitReimuYinYangOrb(player, enemy) {
+    const skill = player.skills[2];
+    const orb = skill.data?.orb;
+    if (!skill.active || !orb || !orb.active) return;
+
+    const orbRect = { x: orb.x - orb.radius, y: orb.y - orb.radius, w: orb.radius * 2, h: orb.radius * 2 };
+    if (!rectsOverlap(orbRect, enemy.getHurtbox())) return;
+
+    const hitEnemies = ensureSet(skill.data, '_pveHitEnemies');
+    if (hitEnemies.has(enemy)) return;
+
+    hitEnemies.add(enemy);
+    enemy.damage(105);
+    enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.28);
+    enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.45);
+    enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.7);
+}
+
+function hitReimuBindingCircle(player, enemy) {
+    const skill = player.skills[3];
+    const data = skill.data;
+    if (!skill.active || !data) return;
+
+    const center = getEnemyCenter(enemy);
+    const dx = center.x - data.cx;
+    const dy = center.y - data.cy;
+    if (dx * dx + dy * dy > data.radius * data.radius) return;
+
+    const tickTimes = [0.18, 0.48, 0.78, 1.08];
+    const tickDamage = [12, 12, 14, 24];
+    const hitMap = data._pveBindingHits || (data._pveBindingHits = new Map());
+    let enemyHits = hitMap.get(enemy);
+    if (!enemyHits) {
+        enemyHits = new Set();
+        hitMap.set(enemy, enemyHits);
+    }
+
+    for (let i = 0; i < tickTimes.length; i++) {
+        if (enemyHits.has(i) || data.timer < tickTimes[i]) continue;
+        enemyHits.add(i);
+        enemy.damage(tickDamage[i]);
+        enemy.stunTimer = Math.max(enemy.stunTimer || 0, i < 3 ? 0.16 : 0.3);
+        enemy.slowTimer = Math.max(enemy.slowTimer || 0, 0.55);
+        enemy.slowMultiplier = Math.min(enemy.slowMultiplier || 1, 0.55);
+    }
 }
 
 function hitMarisaLasers(player, enemy) {

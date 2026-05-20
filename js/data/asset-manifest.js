@@ -47,5 +47,21 @@ export const EFFECT_FRAME_SETS = {
     seal: {
         pattern: index => `assets/effects/seal_${index}.png`,
         count: 4
+    },
+    reimuDreamSealRelease: {
+        pattern: index => `assets/effects/reimu_dream_seal_release_${index}.png`,
+        count: 8
+    },
+    reimuDoubleBarrierRelease: {
+        pattern: index => `assets/effects/reimu_double_barrier_release_${index}.png`,
+        count: 8
+    },
+    reimuYinYangOrbRelease: {
+        pattern: index => `assets/effects/reimu_yin_yang_orb_release_${index}.png`,
+        count: 8
+    },
+    reimuBindingCircleRelease: {
+        pattern: index => `assets/effects/reimu_binding_circle_release_${index}.png`,
+        count: 8
     }
 };

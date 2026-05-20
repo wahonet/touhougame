@@ -2280,6 +2280,27 @@ function _tickHitEffects(effects) {
     }
 }
 
+function _drawAnchoredFrame(ctx, sprite, x, y, w, h, options = {}) {
+    const {
+        alpha = 1,
+        anchorX = 0.5,
+        anchorY = 0.5,
+        flipX = false,
+        rotation = 0
+    } = options;
+
+    if (!sprite) return false;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    if (rotation) ctx.rotate(rotation);
+    if (flipX) ctx.scale(-1, 1);
+    ctx.drawImage(sprite, -w * anchorX, -h * anchorY, w, h);
+    ctx.restore();
+    return true;
+}
+
 // ===================== DRAW SKILL EFFECTS =====================
 
 /** Draw all active skill effects */
@@ -2302,10 +2323,36 @@ export function drawSkill(fighter, ctx) {
 // ---- REIMU DRAW ----
 
 function _drawReimuDreamSeal(fighter, ctx, data) {
+    const frames = Assets.effects.reimuDreamSealRelease || [];
+    const maxFrameIndex = Math.max(0, frames.length - 1);
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const frameProgress = Math.min(1, data.age / 40);
+    const frameIndex = Math.min(maxFrameIndex, Math.floor(frameProgress * maxFrameIndex));
+    const sprite = frames[frameIndex];
+
+    if (sprite) {
+        const w = Math.min(820, Math.max(700, fighter.hurtboxW * 6.2));
+        const h = Math.round(w * sprite.height / sprite.width);
+        const alpha = data.age < 32 ? 1 : Math.max(0, 1 - (data.age - 32) / 12);
+        _drawAnchoredFrame(
+            ctx,
+            sprite,
+            fighter.cx + dir * 26,
+            fighter.cy - fighter.hurtboxH * 0.56,
+            w,
+            h,
+            {
+                alpha,
+                anchorX: 0.22,
+                anchorY: 0.52,
+                flipX: dir < 0
+            }
+        );
+    }
+
     for (const proj of data.projectiles) {
         if (!proj.active) continue;
-        const frameIndex = Math.floor(proj.frame / 8) % 4;
-        const sprite = Assets.effects.spellcard[frameIndex];
+        const sprite = Assets.effects.spellcard[Math.floor(proj.frame / 8) % 4];
         const trailAlpha = 0.16 + Math.min(0.35, Math.abs(proj.vx) * 0.03);
 
         ctx.save();
@@ -2346,22 +2393,37 @@ function _drawReimuDreamSeal(fighter, ctx, data) {
 }
 
 function _drawReimuDoubleBarrier(fighter, ctx, data) {
+    const frames = Assets.effects.reimuDoubleBarrierRelease || [];
+    const maxFrameIndex = Math.max(0, frames.length - 1);
     const cx = fighter.cx;
     const cy = fighter.cy - fighter.hurtboxH / 2;
+    const progress = data.shockwave ? Math.min(1, data.shockwave.radius / data.shockwave.maxRadius) : Math.min(1, data.pulse / 6);
+    const frameIndex = Math.min(maxFrameIndex, Math.floor(progress * maxFrameIndex));
+    const sprite = frames[frameIndex] || null;
     const pulse = 0.5 + Math.sin(Date.now() * 0.01 + data.pulse * 8) * 0.12;
 
     ctx.save();
-    ctx.globalAlpha = 0.35 + pulse * 0.35;
-    ctx.strokeStyle = '#ffd9f0';
-    ctx.shadowColor = '#ff9ab0';
-    ctx.shadowBlur = 18;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 48 + pulse * 10, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 76 + pulse * 14, 0, Math.PI * 2);
-    ctx.stroke();
+    if (sprite) {
+        const w = Math.min(840, Math.max(700, fighter.hurtboxW * 6.2));
+        const h = Math.round(w * sprite.height / sprite.width);
+        _drawAnchoredFrame(ctx, sprite, cx, cy - 10, w, h, {
+            alpha: 0.92,
+            anchorX: 0.5,
+            anchorY: 0.5
+        });
+    } else {
+        ctx.globalAlpha = 0.25 + pulse * 0.25;
+        ctx.strokeStyle = '#ffd9f0';
+        ctx.shadowColor = '#ff9ab0';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 48 + pulse * 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 76 + pulse * 14, 0, Math.PI * 2);
+        ctx.stroke();
+    }
     ctx.restore();
 
     if (data.shockwave) {
@@ -2383,105 +2445,137 @@ function _drawReimuDoubleBarrier(fighter, ctx, data) {
 }
 
 function _drawReimuYinYangOrb(fighter, ctx, data) {
+    const frames = Assets.effects.reimuYinYangOrbRelease || [];
+    const maxFrameIndex = Math.max(0, frames.length - 1);
     const orb = data.orb;
     if (orb && orb.active) {
+        const progress = Math.min(1, orb.frame / 40);
+        const frameIndex = Math.min(maxFrameIndex, Math.floor(progress * maxFrameIndex));
+        const sprite = frames[frameIndex] || null;
         const spin = orb.frame * 0.18;
-        const r = orb.radius;
 
-        ctx.save();
-        ctx.translate(orb.x, orb.y);
-        ctx.rotate(spin);
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#f4efe7';
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fill();
+        if (sprite) {
+            const w = Math.min(800, Math.max(680, orb.radius * 24));
+            const h = Math.round(w * sprite.height / sprite.width);
+            _drawAnchoredFrame(ctx, sprite, orb.x, orb.y, w, h, {
+                alpha: orb.frame < 28 ? 1 : Math.max(0, 1 - (orb.frame - 28) / 12),
+                anchorX: 0.76,
+                anchorY: 0.5,
+                flipX: fighter.facing === 'left'
+            });
+        } else {
+            ctx.save();
+            ctx.translate(orb.x, orb.y);
+            ctx.rotate(spin);
+            const r = orb.radius;
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#f4efe7';
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.fillStyle = '#1b1b1b';
-        ctx.beginPath();
-        ctx.arc(0, -r * 0.34, r * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#1b1b1b';
+            ctx.beginPath();
+            ctx.arc(0, -r * 0.34, r * 0.5, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.fillStyle = '#f4efe7';
-        ctx.beginPath();
-        ctx.arc(0, r * 0.34, r * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#f4efe7';
+            ctx.beginPath();
+            ctx.arc(0, r * 0.34, r * 0.5, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.fillStyle = '#1b1b1b';
-        ctx.beginPath();
-        ctx.arc(0, -r * 0.34, r * 0.14, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#1b1b1b';
+            ctx.beginPath();
+            ctx.arc(0, -r * 0.34, r * 0.14, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.fillStyle = '#f4efe7';
-        ctx.beginPath();
-        ctx.arc(0, r * 0.34, r * 0.14, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.fillStyle = '#f4efe7';
+            ctx.beginPath();
+            ctx.arc(0, r * 0.34, r * 0.14, 0, Math.PI * 2);
+            ctx.fill();
 
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#ff9ab0';
-        ctx.shadowColor = '#ff9ab0';
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ff9ab0';
+            ctx.shadowColor = '#ff9ab0';
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     _drawSparkEffects(ctx, data.hitEffects, '#ff9ab0');
 }
 
 function _drawReimuBindingCircle(fighter, ctx, data) {
+    const frames = Assets.effects.reimuBindingCircleRelease || [];
+    const maxFrameIndex = Math.max(0, frames.length - 1);
     const p = Math.min(1, data.timer / data.duration);
     const alpha = p < 0.15 ? p / 0.15 : 1 - Math.max(0, p - 0.72) / 0.28;
     const pulse = 0.7 + Math.sin(data.timer * 8) * 0.08;
+    const frameIndex = Math.min(maxFrameIndex, Math.floor(p * maxFrameIndex));
+    const sprite = frames[frameIndex] || null;
 
     ctx.save();
-    ctx.globalAlpha = 0.18 * alpha;
-    ctx.fillStyle = '#f3d4ff';
-    ctx.beginPath();
-    ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.save();
-    ctx.globalAlpha = 0.55 * alpha;
-    ctx.strokeStyle = '#ffccff';
-    ctx.shadowColor = '#ffccff';
-    ctx.shadowBlur = 18;
-    ctx.lineWidth = 2.5;
-    for (const ring of data.rings) {
+    if (sprite) {
+        const w = Math.min(840, Math.max(700, data.radius * 4.8));
+        const h = Math.round(w * sprite.height / sprite.width);
+        _drawAnchoredFrame(ctx, sprite, data.cx, data.cy, w, h, {
+            alpha: 0.92 * alpha,
+            anchorX: 0.5,
+            anchorY: 0.5
+        });
+    } else {
+        ctx.globalAlpha = 0.22 * alpha;
+        ctx.fillStyle = '#f3d4ff';
         ctx.beginPath();
-        ctx.arc(data.cx, data.cy, ring.radius + Math.sin(data.timer * 6 + ring.phase) * 3, 0, Math.PI * 2);
-        ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.save();
-    ctx.globalAlpha = 0.9 * alpha;
-    ctx.strokeStyle = '#ff9ab0';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#ff9ab0';
-    ctx.shadowBlur = 12;
-    for (const seal of data.seals) {
-        const a = seal.angle + data.timer * 2.2;
-        const x = data.cx + Math.cos(a) * (data.radius * 0.72);
-        const y = data.cy + Math.sin(a) * (data.radius * 0.58);
-        ctx.beginPath();
-        ctx.arc(x, y, 5 + pulse * 1.2, 0, Math.PI * 2);
+        ctx.arc(data.cx, data.cy, data.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
     }
     ctx.restore();
 
-    ctx.save();
-    ctx.globalAlpha = 0.45 * alpha;
-    ctx.fillStyle = '#ff6b8a';
-    ctx.shadowColor = '#ff6b8a';
-    ctx.shadowBlur = 14;
-    ctx.beginPath();
-    ctx.arc(data.cx, data.cy, 18 + pulse * 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    if (!sprite) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 * alpha;
+        ctx.strokeStyle = '#ffccff';
+        ctx.shadowColor = '#ffccff';
+        ctx.shadowBlur = 18;
+        ctx.lineWidth = 2.5;
+        for (const ring of data.rings) {
+            ctx.beginPath();
+            ctx.arc(data.cx, data.cy, ring.radius + Math.sin(data.timer * 6 + ring.phase) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.9 * alpha;
+        ctx.strokeStyle = '#ff9ab0';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff9ab0';
+        ctx.shadowBlur = 12;
+        for (const seal of data.seals) {
+            const a = seal.angle + data.timer * 2.2;
+            const x = data.cx + Math.cos(a) * (data.radius * 0.72);
+            const y = data.cy + Math.sin(a) * (data.radius * 0.58);
+            ctx.beginPath();
+            ctx.arc(x, y, 5 + pulse * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.45 * alpha;
+        ctx.fillStyle = '#ff6b8a';
+        ctx.shadowColor = '#ff6b8a';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(data.cx, data.cy, 18 + pulse * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
 
     _drawSparkEffects(ctx, data.hitEffects, '#ffccff');
 }

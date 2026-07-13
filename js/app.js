@@ -1,5 +1,5 @@
 /**
- * main.js - Application composition, game loop, and state transitions.
+ * app.js - Application composition, game loop, and state transitions.
  */
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from './config/game-config.js';
 import { AudioManager } from './core/audio-manager.js';
@@ -14,6 +14,7 @@ function resetGame() {
     resetBattleState();
     Game.state = 'select';
     SelectScene.reset();
+    // BGM: 选人界面背景音乐
     AudioManager.playBGM('bgm_select');
 }
 

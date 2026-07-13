@@ -193,3 +193,9 @@ js/main.js -> 旧入口兼容壳，负责再注入 js/app.js
 ## 下一步方向
 
 后续开发按照人物逐个补齐新技能套装。建议顺序参考 `docs/SKILL_CANDIDATES.md`，每次只处理一个角色的 4 个技能：先更新 `characters.js` 的技能名/描述/冷却，再实现 PvP 技能行为、PvE 命中结算、AI 使用策略，最后补必要的技能图标或特效资产并跑 `npm run check`。
+
+## 杂项
+
+本项目为东方 Project 同人作品，仅供学习交流使用。欢迎提 Issue 和 PR。
+
+开发过程中最常对自己说的一句话：先跑 `npm run check`，再 commit。

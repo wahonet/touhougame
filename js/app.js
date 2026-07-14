@@ -1,5 +1,5 @@
 /**
- * app.js - Application composition, game loop, and state transitions.
+ * app.js - 应用入口：组合各模块、驱动主循环、管理场景切换。
  */
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from './config/game-config.js';
 import { AudioManager } from './core/audio-manager.js';
